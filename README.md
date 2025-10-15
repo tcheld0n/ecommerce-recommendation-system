@@ -51,6 +51,10 @@ python app.py
 
 The server will start on `http://localhost:5000`
 
+**Note**: By default, the application runs in debug mode for development. For production deployment:
+- Set the environment variable `FLASK_DEBUG=0` to disable debug mode
+- Use a production WSGI server like Gunicorn or uWSGI instead of the Flask development server
+
 ## API Endpoints
 
 ### Books
