@@ -1,4 +1,5 @@
 # Ecommerce Recommendation System
+# E-Commerce Book Recommendation System
 
 Resumo rápido
 - Serviço de recomendações em Python (FastAPI) + frontend mínimo em Vue 3 (Vite).
