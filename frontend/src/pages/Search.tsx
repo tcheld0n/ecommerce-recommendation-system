@@ -5,7 +5,7 @@ import { BookCard } from '@/components/books/BookCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Filter } from 'lucide-react'
+import { Search as SearchIcon, Filter } from 'lucide-react'
 
 export function Search() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -97,7 +97,7 @@ export function Search() {
               />
             </div>
             <Button type="submit" className="flex items-center space-x-2">
-              <Search className="w-4 h-4" />
+              <SearchIcon className="w-4 h-4" />
               <span>Buscar</span>
             </Button>
           </div>

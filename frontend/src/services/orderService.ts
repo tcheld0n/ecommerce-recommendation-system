@@ -1,5 +1,6 @@
 import { api } from './api'
 import { Order, OrderCreate, OrderSummary } from '@/types/order'
+import { useState } from 'react'
 
 export const orderService = {
   async createOrder(orderData: OrderCreate): Promise<Order> {
@@ -26,5 +27,76 @@ export const orderService = {
   async updateOrderStatus(orderId: string, status: string): Promise<Order> {
     const response = await api.put(`/orders/${orderId}/status`, { status })
     return response.data
+  }
+}
+
+// Hook for order operations
+export const useOrderService = () => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createOrder = async (orderData: OrderCreate): Promise<Order> => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const order = await orderService.createOrder(orderData)
+      return order
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Erro ao criar pedido')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getOrder = async (id: string): Promise<Order> => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const order = await orderService.getOrder(id)
+      return order
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Erro ao buscar pedido')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getUserOrders = async (): Promise<OrderSummary[]> => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const orders = await orderService.getUserOrders()
+      return orders
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Erro ao buscar pedidos')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const processPayment = async (orderId: string): Promise<any> => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const result = await orderService.processPayment(orderId)
+      return result
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Erro ao processar pagamento')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    createOrder,
+    getOrder,
+    getUserOrders,
+    processPayment,
+    isLoading,
+    error
   }
 }
