@@ -1,43 +1,93 @@
-version: '3.8'
 services:
-  product-service:
-    build: ./product-service
-    ports:
-      - "3001:3001"
-    depends_on:
-      - postgres
-  recommendation-adapter:
-    build: ./recommendation-adapter
-    ports:
-      - "3002:3002"
-    environment:
-      - PYTHON_SERVICE_URL=http://python-recommendation:5000
-    depends_on:
-      - python-recommendation
-  python-recommendation:
-    build: ./python-recommendation-service
-    ports:
-      - "5000:5000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - MODEL_PATH=/app/models/recommendation_model.pkl
-    volumes:
-      - ./python-recommendation-service:/app
-    depends_on:
-      - redis
   postgres:
     image: postgres:15
+    environment:
+      POSTGRES_DB: bookstore
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=ecommerce
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d bookstore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
-    image: redis:7
+    image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/bookstore
+      - REDIS_URL=redis://redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+      - ./uploads:/app/uploads
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  celery:
+    build: .
+    command: celery -A tasks.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/bookstore
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./:/app
+
+  celery-beat:
+    build: .
+    command: celery -A tasks.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/bookstore
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./:/app
+
 volumes:
-  pgdata:
+  postgres_data:
+  redis_data:
+  elasticsearch_data:
