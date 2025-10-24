@@ -292,3 +292,4 @@ Se você encontrar algum problema ou tiver dúvidas, por favor:
 - [ ] Criar app mobile (React Native)
 - [ ] Adicionar sistema de afiliados
 - [ ] Implementar marketplace para vendedores terceiros
+- [ ] Implementar testes unitários
