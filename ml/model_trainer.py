@@ -1,7 +1,7 @@
 import os
 import sys
 from typing import List, Dict, Any
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from core.database import SessionLocal
 from models.book import Book, Category, BookTag
 from models.recommendation import UserInteraction
@@ -18,9 +18,10 @@ class ModelTrainer:
         """Prepare books data for training."""
         print("Preparing books data...")
         
+        # Use selectinload to eagerly load relationships (correct SQLAlchemy loader options)
         books = self.db.query(Book).options(
-            Book.category,
-            Book.tags
+            selectinload(Book.category),
+            selectinload(Book.tags)
         ).all()
         
         books_data = []

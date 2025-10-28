@@ -75,7 +75,7 @@ export function Cart() {
                 <div className="flex items-center space-x-4">
                   <Link to={`/books/${item.book_id}`}>
                     <img
-                      src={item.book?.cover_image_url || '/placeholder-book.jpg'}
+                      src={item.book?.cover_image_url || '/placeholder-book.svg'}
                       alt={item.book?.title}
                       className="w-20 h-28 object-cover rounded"
                     />

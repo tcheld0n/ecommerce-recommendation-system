@@ -224,6 +224,12 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
+### Para rodar o modelo
+```bash
+docker-compose exec backend python -m ml.model_trainer  
+```
+
+
 ## 📚 API Endpoints
 
 ### Autenticação

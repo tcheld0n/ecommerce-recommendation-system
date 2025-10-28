@@ -18,7 +18,12 @@ export function RecommendationSection() {
         if (isAuthenticated) {
           // Get personalized recommendations for authenticated users
           const response = await recommendationService.getPersonalizedRecommendations(8)
-          recs = response.recommendations
+          // backend may return either an array or an object { recommendations: [...] }
+          if (Array.isArray(response)) {
+            recs = response
+          } else {
+            recs = response?.recommendations || []
+          }
         } else {
           // Get popular books for non-authenticated users
           recs = await recommendationService.getPopularBooks(8)

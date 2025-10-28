@@ -20,7 +20,7 @@ from models.review import Review
 from models.user import User
 from models.cart import CartItem
 from models.order import OrderItem
-from models.user_interaction import UserInteraction
+from models.recommendation import UserInteraction
 from core.config import settings
 
 def create_default_categories(db: Session):
@@ -136,6 +136,7 @@ def import_books_from_csv(csv_path: str):
                         description=f"Livro com {pages} páginas publicado em {year}",
                         price=Decimal('29.90'),
                         stock_quantity=10,
+                        cover_image_url='/placeholder-book.svg',
                         category_id=category.id,
                         average_rating=0.0,
                         total_reviews=0
