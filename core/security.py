@@ -1,20 +1,65 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status
 from core.config import settings
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _truncate_password(password: str) -> str:
+    """Truncate password to 72 bytes maximum (bcrypt limit).
+    
+    Ensures we don't truncate in the middle of a UTF-8 character.
+    """
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) <= 72:
+        return password
+    
+    # Truncate to 72 bytes
+    truncated_bytes = password_bytes[:72]
+    
+    # Try to decode, removing trailing bytes if we cut in the middle of a UTF-8 char
+    while truncated_bytes:
+        try:
+            return truncated_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            truncated_bytes = truncated_bytes[:-1]
+    
+    # Fallback: return empty string (shouldn't happen)
+    return ''
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Bcrypt has a 72 byte limit, so truncate if necessary
+    password_bytes = plain_password.encode('utf-8')
+    if len(password_bytes) > 72:
+        plain_password = _truncate_password(plain_password)
+    
+    # Use bcrypt directly to avoid passlib compatibility issues
+    try:
+        if isinstance(hashed_password, str):
+            hashed_bytes = hashed_password.encode('utf-8')
+        else:
+            hashed_bytes = hashed_password
+        
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_bytes)
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
+    """Hash a password.
+    
+    Note: Bcrypt has a 72 byte limit. Passwords longer than 72 bytes
+    will be truncated automatically while preserving UTF-8 character boundaries.
+    """
+    # Bcrypt has a 72 byte limit, so truncate if necessary before hashing
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password = _truncate_password(password)
+    
+    # Use bcrypt directly to avoid passlib compatibility issues
+    password_bytes = password.encode('utf-8')
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt(rounds=12))
+    return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token."""
