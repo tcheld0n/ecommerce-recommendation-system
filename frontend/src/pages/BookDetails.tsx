@@ -125,7 +125,7 @@ export function BookDetails() {
         {/* Book Image */}
         <div className="aspect-[3/4] overflow-hidden rounded-lg">
           <img
-            src={currentBook.cover_image_url || '/placeholder-book.jpg'}
+            src={currentBook.cover_image_url || '/placeholder-book.svg'}
             alt={currentBook.title}
             className="w-full h-full object-cover"
           />

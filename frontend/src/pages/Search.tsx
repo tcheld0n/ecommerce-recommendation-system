@@ -115,13 +115,18 @@ export function Search() {
               <label className="block text-sm font-medium mb-1">Categoria</label>
               <Select
                 value={filters.category_id}
-                onValueChange={(value) => setFilters({ ...filters, category_id: value })}
+                onValueChange={(value) =>
+                  setFilters({
+                    ...filters,
+                    category_id: value === "__all__" ? "" : value,
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as categorias" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as categorias</SelectItem>
+                  <SelectItem value="__all__">Todas as categorias</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -155,13 +160,15 @@ export function Search() {
               <label className="block text-sm font-medium mb-1">Avaliação Mínima</label>
               <Select
                 value={filters.min_rating}
-                onValueChange={(value) => setFilters({ ...filters, min_rating: value })}
+                onValueChange={(value) =>
+                  setFilters({ ...filters, min_rating: value === "__any__" ? "" : value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Qualquer avaliação" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Qualquer avaliação</SelectItem>
+                  <SelectItem value="__any__">Qualquer avaliação</SelectItem>
                   <SelectItem value="4">4+ estrelas</SelectItem>
                   <SelectItem value="3">3+ estrelas</SelectItem>
                   <SelectItem value="2">2+ estrelas</SelectItem>

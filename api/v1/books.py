@@ -4,8 +4,9 @@ from typing import List, Optional
 from core.database import get_db
 from core.dependencies import get_current_user, get_current_admin_user
 from services.book_service import BookService
-from schemas.book import Book, BookCreate, BookUpdate, BookSearch, Category, CategoryCreate, CategoryUpdate
+from schemas.book import Book, BookCreate, BookUpdate, BookSearch
 from models.user import User
+from uuid import UUID
 
 router = APIRouter()
 
@@ -41,17 +42,37 @@ async def get_books(
     )
     return await book_service.get_books(search_params)
 
-@router.get("/{book_id}", response_model=Book)
-async def get_book(book_id: str, db: Session = Depends(get_db)):
-    """Get book by ID."""
+
+@router.get("/popular", response_model=List[Book])
+async def get_popular_books(
+    limit: int = Query(10, ge=1, le=50, description="Number of books to return"),
+    db: Session = Depends(get_db)
+):
+    """Get popular books."""
     book_service = BookService(db)
-    book = await book_service.get_book_by_id(book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
-        )
-    return book
+    return await book_service.get_popular_books(limit)
+
+
+@router.get("/recent", response_model=List[Book])
+async def get_recent_books(
+    limit: int = Query(10, ge=1, le=50, description="Number of books to return"),
+    db: Session = Depends(get_db)
+):
+    """Get recent books."""
+    book_service = BookService(db)
+    return await book_service.get_recent_books(limit)
+
+
+@router.get("/author/{author}", response_model=List[Book])
+async def get_books_by_author(
+    author: str,
+    limit: int = Query(10, ge=1, le=50, description="Number of books to return"),
+    db: Session = Depends(get_db)
+):
+    """Get books by author."""
+    book_service = BookService(db)
+    return await book_service.get_books_by_author(author, limit)
+
 
 @router.post("/", response_model=Book)
 async def create_book(
@@ -62,6 +83,7 @@ async def create_book(
     """Create a new book (admin only)."""
     book_service = BookService(db)
     return await book_service.create_book(book_data)
+
 
 @router.put("/{book_id}", response_model=Book)
 async def update_book(
@@ -80,6 +102,7 @@ async def update_book(
         )
     return book
 
+
 @router.delete("/{book_id}")
 async def delete_book(
     book_id: str,
@@ -96,30 +119,16 @@ async def delete_book(
         )
     return {"message": "Book deleted successfully"}
 
-@router.get("/popular/", response_model=List[Book])
-async def get_popular_books(
-    limit: int = Query(10, ge=1, le=50, description="Number of books to return"),
-    db: Session = Depends(get_db)
-):
-    """Get popular books."""
-    book_service = BookService(db)
-    return await book_service.get_popular_books(limit)
 
-@router.get("/recent/", response_model=List[Book])
-async def get_recent_books(
-    limit: int = Query(10, ge=1, le=50, description="Number of books to return"),
-    db: Session = Depends(get_db)
-):
-    """Get recent books."""
+@router.get("/{book_id}", response_model=Book)
+async def get_book(book_id: UUID, db: Session = Depends(get_db)):
+    """Get book by ID."""
     book_service = BookService(db)
-    return await book_service.get_recent_books(limit)
-
-@router.get("/author/{author}", response_model=List[Book])
-async def get_books_by_author(
-    author: str,
-    limit: int = Query(10, ge=1, le=50, description="Number of books to return"),
-    db: Session = Depends(get_db)
-):
-    """Get books by author."""
-    book_service = BookService(db)
-    return await book_service.get_books_by_author(author, limit)
+    # convert UUID to str for repository lookup (models use UUID/as_uuid=True)
+    book = await book_service.get_book_by_id(str(book_id))
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not found"
+        )
+    return book

@@ -253,7 +253,7 @@ export function Checkout() {
                 {cart.items.map((item) => (
                   <div key={item.id} className="flex items-center space-x-4">
                     <img
-                      src={item.book?.cover_image_url || '/placeholder-book.jpg'}
+                      src={item.book?.cover_image_url || '/placeholder-book.svg'}
                       alt={item.book?.title}
                       className="w-16 h-20 object-cover rounded"
                     />

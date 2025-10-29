@@ -32,4 +32,16 @@ export const recommendationService = {
     })
     return response.data
   }
+
+  ,
+
+  async recordInteraction(bookId: string, interactionType: string): Promise<void> {
+    try {
+      await api.post('/recommendations/interactions', {
+        book_id: bookId,
+        interaction_type: interactionType
+      })
+    } catch (err) {
+    }
+  }
 }
