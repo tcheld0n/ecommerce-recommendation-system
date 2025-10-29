@@ -10,6 +10,7 @@ import { Checkout } from '@/pages/Checkout'
 import { Profile } from '@/pages/Profile'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
+import MyOrders from '@/pages/MyOrders'
 import { AdminDashboard } from '@/pages/Admin/Dashboard'
 import { BookManagement } from '@/pages/Admin/BookManagement'
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/orders" element={<MyOrders />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

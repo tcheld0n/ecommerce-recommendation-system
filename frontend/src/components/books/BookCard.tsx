@@ -69,7 +69,7 @@ export function BookCard({ book }: BookCardProps) {
       <Link to={`/books/${book.id}`}>
         <div className="aspect-[3/4] overflow-hidden rounded-t-lg">
           <img
-            src={book.cover_image_url || '/placeholder-book.jpg'}
+            src={book.cover_image_url || '/placeholder-book.svg'}
             alt={book.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
           />

@@ -17,12 +17,17 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 │                   Frontend                       │
 │              React + TypeScript                  │
 │                    (Vite)                        │
+│                  Porta 3000                      │
 └────────────────┬────────────────────────────────┘
                  │ HTTP/REST
                  │
 ┌────────────────▼────────────────────────────────┐
 │                  API Gateway                     │
-│              FastAPI (Port 8000)                 │
+│              FastAPI (Python)                    │
+│              - Rotas REST                        │
+│              - Autenticação JWT                  │
+│              - Validação Pydantic                │
+│              Porta 8000                          │
 └─────┬─────────┬──────────┬─────────┬────────────┘
       │         │          │         │
 ┌─────▼───┐ ┌──▼─────┐ ┌──▼────┐ ┌──▼──────────┐
@@ -31,112 +36,161 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 │:8001    │ │:8002   │ │:8004  │ │:8005        │
 └─────┬───┘ └──┬─────┘ └──┬────┘ └──┬──────────┘
       │        │          │         │
-┌─────▼───┐ ┌──▼─────┐ ┌──▼────┐ ┌──▼──────────┐
-│Payment  │ │ Users  │ │Recommend│ │            │
-│Service  │ │Service │ │Service │ │            │
-│:8006    │ │:8003   │ │:8007   │ │            │
-└─────────┘ └────────┘ └────────┘ └─────────────┘
+      │        │          │         │
+      └────────┴──────────┴─────────┘
+                    │
+      ┌─────────────┼─────────────────┐
+      │             │                 │
+┌─────▼────┐  ┌─────▼─────┐   ┌──────▼──────┐
+│PostgreSQL│  │   Redis   │   │Elasticsearch│
+│  5432    │  │   6379    │   │    9200     │
+└──────────┘  └───────────┘   └─────────────┘
 ```
 
-## 🎯 **Funcionalidades Implementadas**
+## 🎯 Funcionalidades
 
-### **✅ Core Features**
-- [x] **Sistema de Autenticação JWT** - Registro, login, refresh tokens
-- [x] **Catálogo de Livros** - CRUD completo com busca avançada
-- [x] **Carrinho de Compras** - Adicionar, remover, atualizar itens
-- [x] **Sistema de Pedidos** - Checkout completo com rastreamento
-- [x] **Sistema de Pagamentos** - Processamento e métodos de pagamento
-- [x] **Sistema de Recomendação** - ML híbrido (colaborativo + conteúdo)
-- [x] **Interface Responsiva** - React com TypeScript
-- [x] **Painel Administrativo** - Gestão completa do sistema
+### ✅ Implementadas
+- [x] Sistema de autenticação JWT
+- [x] CRUD de livros e categorias
+- [x] Sistema de busca avançada com Elasticsearch
+- [x] Carrinho de compras
+- [x] Sistema de pedidos
+- [x] Sistema de recomendação híbrido (Content-Based + Collaborative Filtering)
+- [x] Interface responsiva
+- [x] Painel administrativo
+- [x] Sistema de reviews (endpoints implementados)
 
-### **✅ Arquitetura**
-- [x] **8 Microsserviços** independentes e escaláveis
-- [x] **API Gateway** para orquestração
-- [x] **Docker** para containerização
-- [x] **PostgreSQL** como banco principal
-- [x] **Redis** para cache e sessões
-- [x] **Elasticsearch** para busca avançada
+### 🔄 Em Desenvolvimento
+- [ ] Implementação completa do serviço de reviews
+- [ ] Integração com gateway de pagamento
+- [ ] Sistema de notificações por email
+- [ ] Upload de imagens
+- [ ] Sistema de cupons de desconto
 
-### **🔄 Em Desenvolvimento (Sprint 4)**
-- [ ] **Sistema de Reviews** - Avaliações e comentários
-- [ ] **Upload de Imagens** - Gestão de imagens dos produtos
-- [ ] **Sistema de Notificações** - Email e push notifications
-- [ ] **Sistema de Cupons** - Descontos e promoções
-- [ ] **Testes Unitários** - Cobertura completa de testes
+## 🛠️ Instalação e Configuração
 
-## 🛠️ **Tecnologias Utilizadas**
+### Pré-requisitos
+- **Docker** e **Docker Compose** (recomendado)
+- **Python 3.11+** (se rodar backend localmente)
+- **Node.js 18+** (se rodar frontend localmente)
+- **PostgreSQL 15+** (se rodar localmente)
+- **Redis 7+** (se rodar localmente)
+- **Elasticsearch 8+** (se rodar localmente)
 
-### **Backend (Microsserviços)**
-- **Framework:** FastAPI com Python 3.11+
-- **Banco de Dados:** PostgreSQL 15+ com SQLAlchemy 2.0
-- **Cache:** Redis 7+ para cache e sessões
-- **Busca:** Elasticsearch 8+ para busca avançada
-- **Autenticação:** JWT com refresh tokens
-- **ML/Recomendação:** scikit-learn, pandas, numpy
-- **Task Queue:** Celery + Redis para processamento assíncrono
-- **Containerização:** Docker + Docker Compose
+## 🚀 Como Rodar o Projeto
 
-### **Frontend**
-- **Framework:** React 18+ com TypeScript
-- **Build Tool:** Vite
-- **Estado:** Zustand para gerenciamento de estado
-- **Roteamento:** React Router v6
-- **UI Components:** shadcn/ui + Tailwind CSS
-- **Formulários:** React Hook Form + Zod
-- **HTTP Client:** Axios
+### Opção 1: Usando Docker Compose (Recomendado)
 
-## 🚀 **Instalação e Execução**
-
-### **Método Recomendado: Docker**
-
-1. **Clone o repositório**
+#### 1. Clone o repositório
 ```bash
 git clone <repository-url>
 cd ecommerce-recommendation-system
 ```
 
-2. **Inicie todos os serviços**
+#### 2. Configure as variáveis de ambiente
+```bash
+cp env.example .env
+# Edite o arquivo .env com suas configurações se necessário
+```
+
+#### 3. Inicie os serviços de infraestrutura
+```bash
+docker-compose up -d postgres redis elasticsearch
+```
+
+Aguarde alguns segundos até que os serviços estejam saudáveis.
+
+#### 4. Execute as migrations do banco de dados
+```bash
+docker-compose exec backend alembic upgrade head
+```
+
+#### 5. Inicie todos os serviços (backend, celery, etc.)
 ```bash
 docker-compose up -d
 ```
 
-3. **Execute as migrations**
+#### 6. Treine o modelo de recomendação (opcional, mas recomendado)
 ```bash
-docker-compose exec api-gateway alembic upgrade head
+docker-compose exec backend python -m ml.model_trainer
 ```
 
-4. **Acesse o sistema**
-- **Frontend:** http://localhost:3000
-- **API Gateway:** http://localhost:8000
-- **Documentação:** http://localhost:8000/docs
-- **Health Check:** http://localhost:8000/health
-
-### **Desenvolvimento Local**
-
-#### **Backend (Microsserviços)**
-```bash
-# Instalar dependências
-pip install -r requirements.txt
-
-# Executar serviço específico
-cd services/catalog-service
-uvicorn catalog_service:app --host 0.0.0.0 --port 8001 --reload
-
-# Ou todos os serviços
-docker-compose up -d
-```
-
-#### **Frontend**
+#### 7. Inicie o frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## 📊 **Sistema de Recomendação**
+### Opção 2: Execução Local (sem Docker)
 
-O sistema implementa **três abordagens** de recomendação:
+#### Backend
+
+1. **Instale as dependências**
+```bash
+docker-compose up -d
+```
+
+2. **Configure as variáveis de ambiente**
+```bash
+cp env.example .env
+# Edite o arquivo .env com suas configurações
+```
+
+3. **Certifique-se de que PostgreSQL, Redis e Elasticsearch estão rodando**
+
+4. **Execute as migrations**
+```bash
+alembic upgrade head
+```
+
+5. **Inicie o servidor**
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+6. **Em outro terminal, inicie o Celery worker**
+```bash
+celery -A tasks.celery_app worker --loglevel=info
+```
+
+7. **Em outro terminal, inicie o Celery beat**
+```bash
+celery -A tasks.celery_app beat --loglevel=info
+```
+
+#### Frontend
+
+1. **Navegue para o diretório do frontend**
+```bash
+cd frontend
+npm install
+```
+
+3. **Configure as variáveis de ambiente** (se necessário)
+```bash
+# Crie um arquivo .env no diretório frontend se necessário
+# VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+4. **Inicie o servidor de desenvolvimento**
+```bash
+npm run dev
+```
+
+## 📊 Acessos
+
+Após iniciar o projeto, você pode acessar:
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **Documentação Swagger**: http://localhost:8000/docs
+- **Documentação ReDoc**: http://localhost:8000/redoc
+- **Health Check**: http://localhost:8000/health
+
+## 📊 Sistema de Recomendação
+
+O sistema implementa três abordagens de recomendação:
 
 ### **1. Filtragem Baseada em Conteúdo**
 - Similaridade entre livros baseada em:
@@ -158,9 +212,24 @@ O sistema implementa **três abordagens** de recomendação:
   - Performance histórica
   - Contexto (cold start vs usuário ativo)
 
-## 🔧 **Configuração de Variáveis de Ambiente**
+### Treinamento do Modelo
 
-### **Backend (.env)**
+Para treinar o modelo de recomendação:
+
+```bash
+# Com Docker
+docker-compose exec backend python -m ml.model_trainer
+
+# Localmente
+python -m ml.model_trainer
+```
+
+O modelo será salvo em `ml/models/` e usado pelo sistema de recomendações.
+
+## 🔧 Configuração de Variáveis de Ambiente
+
+### Backend (.env)
+
 ```bash
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/bookstore
@@ -172,52 +241,87 @@ REDIS_URL=redis://localhost:6379/0
 ELASTICSEARCH_URL=http://localhost:9200
 
 # JWT
-SECRET_KEY=your-secret-key-here
+SECRET_KEY=your-secret-key-here-change-in-production
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
 
-# Service URLs
-CATALOG_SERVICE_URL=http://localhost:8001
-AUTH_SERVICE_URL=http://localhost:8002
-USERS_SERVICE_URL=http://localhost:8003
-CART_SERVICE_URL=http://localhost:8004
-ORDERS_SERVICE_URL=http://localhost:8005
-PAYMENT_SERVICE_URL=http://localhost:8006
-RECOMMENDATION_SERVICE_URL=http://localhost:8007
+# Email (opcional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-password
+SMTP_TLS=true
+SMTP_SSL=false
+
+# Payment Gateway (opcional)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Storage (opcional)
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+AWS_BUCKET_NAME=bookstore-images
+AWS_REGION=us-east-1
+
+# ML Models
+MODEL_PATH=/app/ml/models
+RECOMMENDATION_THRESHOLD=0.5
+
+# CORS
+CORS_ORIGINS=["http://localhost:3000"]
+
+# Rate Limiting
+RATE_LIMIT_PER_MINUTE=60
 ```
 
-### **Frontend (.env)**
-```bash
-VITE_API_BASE_URL=http://localhost:8000/api/v1
-VITE_APP_NAME=E-commerce Bookstore
-```
-
-## 📚 **API Endpoints Principais**
+## 📚 API Endpoints Principais
 
 ### **Autenticação**
 - `POST /api/v1/auth/register` - Registrar usuário
 - `POST /api/v1/auth/login` - Login
 - `GET /api/v1/auth/me` - Perfil do usuário
+- `POST /api/v1/auth/logout` - Logout
 
-### **Catálogo**
-- `GET /api/v1/books` - Listar livros com filtros
+### Livros
+- `GET /api/v1/books` - Listar livros com filtros e busca
 - `GET /api/v1/books/{id}` - Detalhes do livro
+- `GET /api/v1/books/popular` - Livros populares
 - `POST /api/v1/books` - Criar livro (admin)
+- `PUT /api/v1/books/{id}` - Atualizar livro (admin)
+- `DELETE /api/v1/books/{id}` - Deletar livro (admin)
 
-### **Carrinho**
-- `GET /api/v1/cart` - Obter carrinho
-- `POST /api/v1/cart/items` - Adicionar item
-- `PUT /api/v1/cart/items/{id}` - Atualizar item
+### Categorias
+- `GET /api/v1/categories` - Listar categorias
+- `GET /api/v1/categories/{id}` - Detalhes da categoria
 
-### **Pedidos**
+### Carrinho
+- `GET /api/v1/cart` - Obter carrinho do usuário
+- `POST /api/v1/cart/items` - Adicionar item ao carrinho
+- `PUT /api/v1/cart/items/{item_id}` - Atualizar item do carrinho
+- `DELETE /api/v1/cart/items/{item_id}` - Remover item do carrinho
+- `DELETE /api/v1/cart` - Limpar carrinho
+
+### Pedidos
 - `POST /api/v1/orders` - Criar pedido
-- `GET /api/v1/orders` - Listar pedidos
+- `GET /api/v1/orders` - Listar pedidos do usuário
 - `GET /api/v1/orders/{id}` - Detalhes do pedido
 
-### **Recomendações**
-- `GET /api/v1/recommendations` - Recomendações personalizadas
+### Recomendações
+- `GET /api/v1/recommendations/for-you` - Recomendações personalizadas
 - `GET /api/v1/recommendations/trending` - Livros em alta
 - `GET /api/v1/recommendations/books/{id}/similar` - Livros similares
+- `POST /api/v1/recommendations/interactions` - Registrar interação do usuário
+
+### Reviews
+- `GET /api/v1/reviews/books/{book_id}` - Listar reviews de um livro
+- `POST /api/v1/reviews/books/{book_id}` - Criar review
+- `PUT /api/v1/reviews/{review_id}` - Atualizar review
+- `DELETE /api/v1/reviews/{review_id}` - Deletar review
+
+### Usuários
+- `GET /api/v1/users/me` - Perfil do usuário atual
+- `PUT /api/v1/users/me` - Atualizar perfil
 
 ## 🧪 **Testes**
 
@@ -232,50 +336,89 @@ pytest tests/test_catalog_service.py
 
 ### **Frontend**
 ```bash
-# Executar testes
+cd frontend
 npm run test
 
 # Testes com cobertura
 npm run test:coverage
 ```
 
-## 📈 **Monitoramento e Saúde**
+## 🛠️ Comandos Úteis
 
-- **API Documentation:** http://localhost:8000/docs
-- **Health Check:** http://localhost:8000/health
-- **Frontend:** http://localhost:3000
-- **Serviços Individuais:**
-  - Catalog: http://localhost:8001/health
-  - Auth: http://localhost:8002/health
-  - Cart: http://localhost:8004/health
-  - Orders: http://localhost:8005/health
-  - Payment: http://localhost:8006/health
-  - Recommendation: http://localhost:8007/health
+### Docker Compose
 
-## 🎯 **Próximas Funcionalidades**
+```bash
+# Ver status dos containers
+docker-compose ps
 
-### **Sprint 4 (Em Andamento)**
-- [ ] Sistema de reviews e avaliações
-- [ ] Upload de imagens com AWS S3
-- [ ] Sistema de notificações por email
-- [ ] Sistema de cupons e promoções
-- [ ] Testes unitários abrangentes
+# Ver logs de um serviço específico
+docker-compose logs backend
+docker-compose logs -f backend  # Seguir logs em tempo real
 
-### **Sprint 5 (Planejada)**
-- [ ] Integração com gateway de pagamento
-- [ ] Sistema de frete
-- [ ] Relatórios de vendas
-- [ ] Performance e escalabilidade
+# Parar todos os serviços
+docker-compose down
 
-### **Sprint 6 (Futuro)**
-- [ ] App mobile (React Native)
-- [ ] Sistema de afiliados
-- [ ] Marketplace para vendedores
-- [ ] Chat de suporte
+# Parar e remover volumes (CUIDADO: apaga dados)
+docker-compose down -v
 
-## 🤝 **Contribuição**
+# Reiniciar um serviço específico
+docker-compose restart backend
 
-### **Para Desenvolvedores:**
+# Rebuild das imagens
+docker-compose build
+```
+
+### Migrations
+
+```bash
+# Criar nova migration
+docker-compose exec backend alembic revision --autogenerate -m "Descrição da migration"
+
+# Aplicar migrations
+docker-compose exec backend alembic upgrade head
+
+# Reverter migration
+docker-compose exec backend alembic downgrade -1
+
+# Ver migration atual
+docker-compose exec backend alembic current
+```
+
+### Treinamento do Modelo
+
+```bash
+# Treinar modelo
+docker-compose exec backend python -m ml.model_trainer
+
+# Ou localmente
+python -m ml.model_trainer
+```
+
+## 🐛 Solução de Problemas
+
+### Backend não inicia
+1. Verifique se o PostgreSQL está rodando: `docker-compose logs postgres`
+2. Verifique se as migrations foram aplicadas: `docker-compose exec backend alembic current`
+3. Verifique os logs do backend: `docker-compose logs backend`
+4. Verifique se as variáveis de ambiente estão configuradas corretamente
+
+### Frontend não conecta ao backend
+1. Verifique se o backend está rodando: `curl http://localhost:8000/health`
+2. Verifique se a URL da API está correta no frontend
+3. Verifique se o CORS está configurado corretamente no backend
+
+### Problemas de Conexão com Banco de Dados
+1. Verifique se o PostgreSQL está rodando: `docker-compose ps`
+2. Verifique se a URL de conexão está correta no `.env`
+3. Verifique os logs: `docker-compose logs postgres`
+
+### Modelo de Recomendação não funciona
+1. Certifique-se de que o modelo foi treinado: `docker-compose exec backend python -m ml.model_trainer`
+2. Verifique se existem livros no banco de dados
+3. Verifique se existem interações de usuários (para filtragem colaborativa)
+
+## 🤝 Contribuição
+
 1. Fork o projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
 3. Implemente seguindo os padrões estabelecidos
@@ -310,22 +453,12 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 Se você encontrar algum problema ou tiver dúvidas:
 
-1. **Verifique a documentação** de implementação
-2. **Confirme se todas as dependências** estão instaladas
-3. **Verifique as variáveis de ambiente** estão configuradas
-4. **Verifique os logs do Docker** se estiver usando
-5. **Abra uma issue** no GitHub
+1. Verifique se todas as dependências estão instaladas
+2. Confirme se as variáveis de ambiente estão configuradas
+3. Verifique os logs do Docker: `docker-compose logs`
+4. Consulte a documentação da API: http://localhost:8000/docs
+5. Abra uma issue no GitHub
 
-## 🏆 **Conquistas**
+## 📖 Documentação Adicional
 
-- ✅ **Arquitetura de microsserviços** funcional e escalável
-- ✅ **Sistema de recomendação** inteligente com ML
-- ✅ **Interface moderna** e responsiva
-- ✅ **Autenticação segura** com JWT
-- ✅ **E-commerce completo** com todas as funcionalidades core
-- ✅ **Código limpo** e bem documentado
-- ✅ **Containerização** completa com Docker
-
----
-
-**Desenvolvido com ❤️ usando FastAPI, React e TypeScript**
+Para instruções mais detalhadas de execução, consulte o arquivo `GUIA_EXECUCAO.md`.
