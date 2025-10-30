@@ -10,7 +10,7 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 
 [📋 Ver Status Detalhado](./IMPLEMENTATION_STATUS.md)
 
-## 🏗️ **Arquitetura de Microsserviços**
+## 🏗️ **Arquitetura de Microsserviços Simplificada**
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -36,6 +36,11 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 │:8001    │ │:8002   │ │:8004  │ │:8005        │
 └─────┬───┘ └──┬─────┘ └──┬────┘ └──┬──────────┘
       │        │          │         │
+┌─────▼───┐ ┌──▼─────┐ ┌──▼────┐ ┌──▼──────────┐
+│Payment  │ │ Users  │ │Recommend│ │            │
+│Service  │ │Service │ │Service │ │            │
+│:8006    │ │:8003   │ │:8007   │ │            │
+└─────┬───┘ └──┬─────┘ └──┬────┘ └──┬──────────┘
       │        │          │         │
       └────────┴──────────┴─────────┘
                     │
@@ -46,6 +51,29 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 │  5432    │  │   6379    │   │    9200     │
 └──────────┘  └───────────┘   └─────────────┘
 ```
+
+### 🔧 **Serviços Implementados (7)**
+
+| Serviço | Porta | Status | Funcionalidade |
+|---------|-------|--------|----------------|
+| **API Gateway** | 8000 | ✅ | Roteamento e orquestração |
+| **Catalog Service** | 8001 | ✅ | Gestão de produtos/livros |
+| **Auth Service** | 8002 | ✅ | Autenticação e autorização |
+| **Users Service** | 8003 | ✅ | Gestão de usuários e perfis |
+| **Cart Service** | 8004 | ✅ | Carrinho de compras |
+| **Orders Service** | 8005 | ✅ | Gestão de pedidos |
+| **Payment Service** | 8006 | ✅ | Pagamentos (placeholder) |
+| **Recommendation Service** | 8007 | ✅ | Sistema de recomendações |
+
+### 🏗️ **Infraestrutura de Apoio**
+
+| Componente | Porta | Status | Função |
+|------------|-------|--------|--------|
+| **PostgreSQL** | 5432 | ✅ | Banco de dados principal |
+| **Redis** | 6379 | ✅ | Cache e sessões |
+| **Elasticsearch** | 9200 | ✅ | Busca e indexação |
+| **Celery** | - | ✅ | Processamento assíncrono |
+| **Celery Beat** | - | ✅ | Agendamento de tarefas |
 
 ## 🎯 Funcionalidades
 
@@ -60,12 +88,13 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 - [x] Painel administrativo
 - [x] Sistema de reviews (endpoints implementados)
 
-### 🔄 Em Desenvolvimento
-- [ ] Implementação completa do serviço de reviews
-- [ ] Integração com gateway de pagamento
+### 🔄 Futuras implementações
+- [ ] Implementação completa do serviço de envios
 - [ ] Sistema de notificações por email
+- [ ] Implementação completa do serviço de reviews
 - [ ] Upload de imagens
 - [ ] Sistema de cupons de desconto
+
 
 ## 🛠️ Instalação e Configuração
 
@@ -73,13 +102,12 @@ Sistema completo de e-commerce especializado em livros com motor de recomendaç�
 - **Docker** e **Docker Compose** (recomendado)
 - **Python 3.11+** (se rodar backend localmente)
 - **Node.js 18+** (se rodar frontend localmente)
-- **PostgreSQL 15+** (se rodar localmente)
-- **Redis 7+** (se rodar localmente)
-- **Elasticsearch 8+** (se rodar localmente)
+
+> **💡 Nota:** Para projeto didático, recomendamos usar Docker Compose para simplicidade.
 
 ## 🚀 Como Rodar o Projeto
 
-### Opção 1: Usando Docker Compose (Recomendado)
+### Opção 1: Usando Docker Compose (Recomendado) ⭐
 
 #### 1. Clone o repositório
 ```bash
@@ -87,75 +115,124 @@ git clone <repository-url>
 cd ecommerce-recommendation-system
 ```
 
-#### 2. Configure as variáveis de ambiente
+#### 2. Inicie todos os serviços
 ```bash
-cp env.example .env
-# Edite o arquivo .env com suas configurações se necessário
+docker compose up -d
 ```
 
-#### 3. Inicie os serviços de infraestrutura
+#### 3. Popule o banco de dados com dados de exemplo (recomendado)
 ```bash
-docker-compose up -d postgres redis elasticsearch
+docker compose run --rm catalog-service python import_csv_only.py
 ```
 
-Aguarde alguns segundos até que os serviços estejam saudáveis.
+> **📝 Nota:** Este comando importa dados do arquivo `livros.csv` para o banco de dados, criando categorias padrão e livros de exemplo. É recomendado executar este passo para ter dados para testar o sistema de recomendação.
 
-#### 4. Execute as migrations do banco de dados
-```bash
-docker-compose exec backend alembic upgrade head
-```
-
-#### 5. Inicie todos os serviços (backend, celery, etc.)
-```bash
-docker-compose up -d
-```
-
-#### 6. Treine o modelo de recomendação (opcional, mas recomendado)
-```bash
-docker-compose exec backend python -m ml.model_trainer
-```
-
-#### 7. Inicie o frontend
+#### 4. Inicie o frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### Opção 2: Execução Local (sem Docker)
+#### 5. Acesse a aplicação
+- **Frontend:** http://localhost:3000
+- **API Gateway:** http://localhost:8000
+- **Documentação da API:** http://localhost:8000/docs
 
-#### Backend
+### ✅ Verificação dos Serviços
 
-1. **Instale as dependências**
+Para verificar se todos os serviços estão rodando:
+
 ```bash
-docker-compose up -d
+docker compose ps
 ```
 
-2. **Configure as variáveis de ambiente**
+Você deve ver todos os serviços com status "Up":
+- ✅ api-gateway (porta 8000)
+- ✅ catalog-service (porta 8001) 
+- ✅ auth-service (porta 8002)
+- ✅ users-service (porta 8003)
+- ✅ cart-service (porta 8004)
+- ✅ orders-service (porta 8005)
+- ✅ payment-service (porta 8006)
+- ✅ recommendation-service (porta 8007)
+- ✅ postgres (porta 5432)
+- ✅ redis (porta 6379)
+- ✅ elasticsearch (porta 9200)
+- ✅ celery (worker)
+- ✅ celery-beat (scheduler)
+
+### Opção 2: Execução Local (sem Docker) ⚠️
+
+> **⚠️ Aviso:** Execução local é mais complexa devido à arquitetura de microsserviços. Recomendamos usar Docker Compose.
+
+#### Pré-requisitos
+- PostgreSQL 15+ rodando na porta 5432
+- Redis 7+ rodando na porta 6379  
+- Elasticsearch 8+ rodando na porta 9200
+
+#### 1. Configure as variáveis de ambiente
 ```bash
 cp env.example .env
 # Edite o arquivo .env com suas configurações
 ```
 
-3. **Certifique-se de que PostgreSQL, Redis e Elasticsearch estão rodando**
-
-4. **Execute as migrations**
+#### 2. Instale dependências de cada serviço
 ```bash
-alembic upgrade head
+# Para cada serviço em services/*/requirements.txt
+pip install -r services/catalog-service/requirements.txt
+pip install -r services/auth-service/requirements.txt
+pip install -r services/users-service/requirements.txt
+pip install -r services/cart-service/requirements.txt
+pip install -r services/orders-service/requirements.txt
+pip install -r services/payment-service/requirements.txt
+pip install -r services/recommendation-service/requirements.txt
+pip install -r services/api-gateway/requirements.txt
 ```
 
-5. **Inicie o servidor**
+#### 3. Popule o banco de dados
 ```bash
-uvicorn main:app --reload --port 8000
+python import_csv_only.py
 ```
 
-6. **Em outro terminal, inicie o Celery worker**
+#### 4. Inicie cada microserviço (em terminais separados)
 ```bash
+# Terminal 1 - API Gateway
+cd services/api-gateway
+uvicorn api_gateway:app --reload --port 8000
+
+# Terminal 2 - Catalog Service  
+cd services/catalog-service
+uvicorn catalog_service:app --reload --port 8001
+
+# Terminal 3 - Auth Service
+cd services/auth-service
+uvicorn auth_service:app --reload --port 8002
+
+# Terminal 4 - Users Service
+cd services/users-service
+uvicorn users_service:app --reload --port 8003
+
+# Terminal 5 - Cart Service
+cd services/cart-service
+uvicorn cart_service:app --reload --port 8004
+
+# Terminal 6 - Orders Service
+cd services/orders-service
+uvicorn orders_service:app --reload --port 8005
+
+# Terminal 7 - Payment Service
+cd services/payment-service
+uvicorn payment_service:app --reload --port 8006
+
+# Terminal 8 - Recommendation Service
+cd services/recommendation-service
+uvicorn recommendation_service:app --reload --port 8007
+
+# Terminal 9 - Celery Worker
 celery -A tasks.celery_app worker --loglevel=info
-```
 
-7. **Em outro terminal, inicie o Celery beat**
-```bash
+# Terminal 10 - Celery Beat
 celery -A tasks.celery_app beat --loglevel=info
 ```
 
@@ -183,10 +260,19 @@ npm run dev
 Após iniciar o projeto, você pode acessar:
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
+- **API Gateway**: http://localhost:8000
 - **Documentação Swagger**: http://localhost:8000/docs
 - **Documentação ReDoc**: http://localhost:8000/redoc
 - **Health Check**: http://localhost:8000/health
+
+### Microserviços Individuais
+- **Catalog Service**: http://localhost:8001/docs
+- **Auth Service**: http://localhost:8002/docs
+- **Users Service**: http://localhost:8003/docs
+- **Cart Service**: http://localhost:8004/docs
+- **Orders Service**: http://localhost:8005/docs
+- **Payment Service**: http://localhost:8006/docs
+- **Recommendation Service**: http://localhost:8007/docs
 
 ## 📊 Sistema de Recomendação
 
@@ -349,73 +435,165 @@ npm run test:coverage
 
 ```bash
 # Ver status dos containers
-docker-compose ps
+docker compose ps
+
+# Ver logs de todos os serviços
+docker compose logs
 
 # Ver logs de um serviço específico
-docker-compose logs backend
-docker-compose logs -f backend  # Seguir logs em tempo real
+docker compose logs api-gateway
+docker compose logs catalog-service
+docker compose logs -f api-gateway  # Seguir logs em tempo real
 
 # Parar todos os serviços
-docker-compose down
+docker compose down
 
 # Parar e remover volumes (CUIDADO: apaga dados)
-docker-compose down -v
+docker compose down -v
 
 # Reiniciar um serviço específico
-docker-compose restart backend
+docker compose restart catalog-service
 
-# Rebuild das imagens
-docker-compose build
+# Reconstruir e reiniciar um serviço
+docker compose up --build catalog-service
+
+# Executar comando em um serviço específico
+docker compose exec catalog-service python import_csv_only.py
+docker compose exec postgres psql -U user -d bookstore
 ```
 
 ### Migrations
 
 ```bash
 # Criar nova migration
-docker-compose exec backend alembic revision --autogenerate -m "Descrição da migration"
+docker compose exec catalog-service alembic revision --autogenerate -m "Descrição da migration"
 
 # Aplicar migrations
-docker-compose exec backend alembic upgrade head
+docker compose exec catalog-service alembic upgrade head
 
 # Reverter migration
-docker-compose exec backend alembic downgrade -1
+docker compose exec catalog-service alembic downgrade -1
 
 # Ver migration atual
-docker-compose exec backend alembic current
+docker compose exec catalog-service alembic current
+```
+
+### Importação de Dados
+
+```bash
+# Importar dados do CSV (Docker)
+docker compose run --rm catalog-service python import_csv_only.py
+
+# Importar dados do CSV (local)
+python import_csv_only.py
+
+# Verificar quantos livros foram importados
+docker compose exec postgres psql -U user -d bookstore -c "SELECT COUNT(*) FROM books;"
 ```
 
 ### Treinamento do Modelo
 
 ```bash
 # Treinar modelo
-docker-compose exec backend python -m ml.model_trainer
+docker compose exec recommendation-service python -m ml.model_trainer
 
 # Ou localmente
 python -m ml.model_trainer
 ```
 
+### Monitoramento
+
+```bash
+# Verificar saúde dos serviços
+curl http://localhost:8000/health
+curl http://localhost:8001/health
+curl http://localhost:8002/health
+
+# Ver documentação da API
+# Acesse: http://localhost:8000/docs
+```
+
 ## 🐛 Solução de Problemas
 
-### Backend não inicia
-1. Verifique se o PostgreSQL está rodando: `docker-compose logs postgres`
-2. Verifique se as migrations foram aplicadas: `docker-compose exec backend alembic current`
-3. Verifique os logs do backend: `docker-compose logs backend`
+### Microserviços não iniciam
+1. Verifique se o PostgreSQL está rodando: `docker compose logs postgres`
+2. Verifique se as migrations foram aplicadas: `docker compose exec catalog-service alembic current`
+3. Verifique os logs dos serviços: `docker compose logs api-gateway`
 4. Verifique se as variáveis de ambiente estão configuradas corretamente
+5. Verifique se todos os volumes estão montados: `docker compose ps`
 
-### Frontend não conecta ao backend
-1. Verifique se o backend está rodando: `curl http://localhost:8000/health`
+### Frontend não conecta ao API Gateway
+1. Verifique se o API Gateway está rodando: `curl http://localhost:8000/health`
 2. Verifique se a URL da API está correta no frontend
-3. Verifique se o CORS está configurado corretamente no backend
+3. Verifique se o CORS está configurado corretamente no API Gateway
+4. Verifique se todos os microserviços estão rodando: `docker compose ps`
 
 ### Problemas de Conexão com Banco de Dados
-1. Verifique se o PostgreSQL está rodando: `docker-compose ps`
+1. Verifique se o PostgreSQL está rodando: `docker compose ps`
 2. Verifique se a URL de conexão está correta no `.env`
-3. Verifique os logs: `docker-compose logs postgres`
+3. Verifique os logs: `docker compose logs postgres`
+4. Teste a conexão: `docker compose exec postgres psql -U user -d bookstore -c "SELECT 1;"`
 
 ### Modelo de Recomendação não funciona
-1. Certifique-se de que o modelo foi treinado: `docker-compose exec backend python -m ml.model_trainer`
-2. Verifique se existem livros no banco de dados
+1. Certifique-se de que o modelo foi treinado: `docker compose exec recommendation-service python -m ml.model_trainer`
+2. Verifique se existem livros no banco de dados: `docker compose exec postgres psql -U user -d bookstore -c "SELECT COUNT(*) FROM books;"`
 3. Verifique se existem interações de usuários (para filtragem colaborativa)
+
+### Problemas de Importação de Dados
+1. Verifique se o arquivo `livros.csv` existe no diretório raiz
+2. Execute a importação: `docker compose run --rm catalog-service python import_csv_only.py`
+3. Verifique se os dados foram importados: `docker compose exec postgres psql -U user -d bookstore -c "SELECT COUNT(*) FROM books;"`
+
+## 🏗️ **Arquitetura Simplificada**
+
+### **Princípios da Refatoração**
+
+Este projeto foi **refatorado** para eliminar over-engineering e focar no aprendizado de arquitetura de microsserviços:
+
+#### ✅ **O que foi simplificado:**
+- **Removidas dependências desnecessárias** entre serviços
+- **Eliminadas abstrações excessivas** (services, repositories)
+- **Implementação direta** da lógica nos endpoints FastAPI
+- **Configuração centralizada** em `core/config.py`
+- **Payment Service** como placeholder (não implementação real)
+- **Variáveis de ambiente** comentadas (email, AWS) para projeto didático
+
+#### 🎯 **Benefícios:**
+- **Código mais limpo** e fácil de entender
+- **Menos complexidade** para estudantes
+- **Foco na arquitetura** de microsserviços
+- **Manutenção simplificada**
+- **Setup rápido** com Docker Compose
+
+#### 📚 **Para Estudantes:**
+- **Cada serviço** é independente e focado
+- **Lógica de negócio** clara nos endpoints
+- **Comunicação** entre serviços via HTTP/REST
+- **Banco de dados** compartilhado (PostgreSQL)
+- **Cache** compartilhado (Redis)
+- **Busca** compartilhada (Elasticsearch)
+
+### **Estrutura de Diretórios**
+
+```
+├── core/                    # Configurações compartilhadas
+│   ├── config.py           # Configurações centralizadas
+│   ├── database.py         # Conexão com banco
+│   └── utils.py            # Utilitários comuns
+├── models/                  # Modelos SQLAlchemy
+├── schemas/                 # Schemas Pydantic
+├── services/                # Microserviços
+│   ├── api-gateway/        # Gateway principal
+│   ├── catalog-service/    # Gestão de livros
+│   ├── auth-service/       # Autenticação
+│   ├── users-service/      # Gestão de usuários
+│   ├── cart-service/       # Carrinho de compras
+│   ├── orders-service/     # Gestão de pedidos
+│   ├── payment-service/    # Pagamentos (placeholder)
+│   └── recommendation-service/ # Sistema de recomendações
+├── frontend/                # Interface React
+└── docker-compose.yml      # Orquestração dos serviços
+```
 
 ## 🤝 Contribuição
 
@@ -455,9 +633,10 @@ Se você encontrar algum problema ou tiver dúvidas:
 
 1. Verifique se todas as dependências estão instaladas
 2. Confirme se as variáveis de ambiente estão configuradas
-3. Verifique os logs do Docker: `docker-compose logs`
+3. Verifique os logs do Docker: `docker compose logs`
 4. Consulte a documentação da API: http://localhost:8000/docs
-5. Abra uma issue no GitHub
+5. Verifique o status dos serviços: `docker compose ps`
+6. Abra uma issue no GitHub
 
 ## 📖 Documentação Adicional
 
