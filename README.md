@@ -117,17 +117,22 @@ Aguarde alguns segundos até que os serviços estejam saudáveis.
 docker-compose exec backend alembic upgrade head
 ```
 
-#### 5. Inicie todos os serviços (backend, celery, etc.)
+#### 5. Popule os dados iniciais (livros)
+```bash
+docker-compose run --rm backend python import_csv_only.py
+```
+
+#### 6. Inicie todos os serviços (backend, celery, etc.)
 ```bash
 docker-compose up -d
 ```
 
-#### 6. Treine o modelo de recomendação (opcional, mas recomendado)
+#### 7. Treine o modelo de recomendação (opcional, mas recomendado)
 ```bash
 docker-compose exec backend python -m ml.model_trainer
 ```
 
-#### 7. Inicie o frontend
+#### 8. Inicie o frontend
 ```bash
 cd frontend
 npm install
