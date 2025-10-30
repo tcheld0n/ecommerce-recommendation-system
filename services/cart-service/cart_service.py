@@ -3,20 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import httpx
-import os
 
 from core.config import settings
 from core.database import get_db, engine, Base
+from core.utils import get_current_user_id, verify_book_exists
 from models.cart import Cart, CartItem
-from schemas.cart import CartResponse, CartItemCreate, CartItemUpdate, CartItemResponse
-from services.cart_service import CartService
+from schemas.cart import Cart, CartItemCreate, CartItemUpdate, CartItem
+# CartService removed - implementing logic directly
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Cart Service",
-    description="Serviço de gerenciamento de carrinho de compras volátil",
+    description="Serviço de gerenciamento de carrinho de compras",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -31,37 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-cart_service = CartService()
-
-# HTTP client for external service calls
-http_client = httpx.AsyncClient()
-
-async def get_current_user_id(token: str) -> int:
-    """Get current user ID from auth service"""
-    try:
-        response = await http_client.post(
-            f"{settings.AUTH_SERVICE_URL}/verify-token",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        if response.status_code == 200:
-            data = response.json()
-            return data["user"]["id"]
-        else:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Authentication failed")
-
-async def verify_book_exists(book_id: int) -> dict:
-    """Verify book exists in catalog service"""
-    try:
-        response = await http_client.get(f"{settings.CATALOG_SERVICE_URL}/books/{book_id}")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise HTTPException(status_code=404, detail="Book not found")
-    except Exception:
-        raise HTTPException(status_code=404, detail="Book not found")
+# Services initialized directly in endpoints
 
 @app.get("/")
 async def root():
@@ -71,7 +41,7 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-@app.get("/cart", response_model=CartResponse)
+@app.get("/cart", response_model=Cart)
 async def get_cart(
     token: str = Depends(lambda: None),  # Will be handled by middleware
     db: Session = Depends(get_db)
@@ -79,13 +49,16 @@ async def get_cart(
     """Get current user's cart"""
     # For now, we'll use a mock user ID - in production, this would come from JWT
     user_id = 1  # This should be extracted from JWT token
-    cart = cart_service.get_user_cart(db, user_id)
+    cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
         # Create empty cart if doesn't exist
-        cart = cart_service.create_cart(db, user_id)
+        cart = Cart(user_id=user_id)
+        db.add(cart)
+        db.commit()
+        db.refresh(cart)
     return cart
 
-@app.post("/cart/items", response_model=CartItemResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/cart/items", response_model=CartItem, status_code=status.HTTP_201_CREATED)
 async def add_to_cart(
     item: CartItemCreate,
     token: str = Depends(lambda: None),  # Will be handled by middleware
@@ -98,19 +71,30 @@ async def add_to_cart(
     book = await verify_book_exists(item.book_id)
     
     # Check if item already exists in cart
-    existing_item = cart_service.get_cart_item(db, user_id, item.book_id)
+    existing_item = db.query(CartItem).filter(
+        CartItem.cart_id == user_id, 
+        CartItem.book_id == item.book_id
+    ).first()
+    
     if existing_item:
         # Update quantity
-        updated_item = cart_service.update_cart_item_quantity(
-            db, user_id, item.book_id, existing_item.quantity + item.quantity
-        )
-        return updated_item
+        existing_item.quantity += item.quantity
+        db.commit()
+        db.refresh(existing_item)
+        return existing_item
     else:
         # Add new item
-        cart_item = cart_service.add_to_cart(db, user_id, item)
+        cart_item = CartItem(
+            cart_id=user_id,
+            book_id=item.book_id,
+            quantity=item.quantity
+        )
+        db.add(cart_item)
+        db.commit()
+        db.refresh(cart_item)
         return cart_item
 
-@app.put("/cart/items/{book_id}", response_model=CartItemResponse)
+@app.put("/cart/items/{book_id}", response_model=CartItem)
 async def update_cart_item(
     book_id: int,
     item_update: CartItemUpdate,
@@ -123,9 +107,14 @@ async def update_cart_item(
     # Verify book exists
     await verify_book_exists(book_id)
     
-    cart_item = cart_service.update_cart_item_quantity(
-        db, user_id, book_id, item_update.quantity
-    )
+    cart_item = db.query(CartItem).filter(
+        CartItem.cart_id == user_id, 
+        CartItem.book_id == book_id
+    ).first()
+    if cart_item:
+        cart_item.quantity = item_update.quantity
+        db.commit()
+        db.refresh(cart_item)
     if not cart_item:
         raise HTTPException(status_code=404, detail="Item not found in cart")
     return cart_item
@@ -139,7 +128,16 @@ async def remove_from_cart(
     """Remove item from cart"""
     user_id = 1  # This should be extracted from JWT token
     
-    success = cart_service.remove_from_cart(db, user_id, book_id)
+    cart_item = db.query(CartItem).filter(
+        CartItem.cart_id == user_id, 
+        CartItem.book_id == book_id
+    ).first()
+    if cart_item:
+        db.delete(cart_item)
+        db.commit()
+        success = True
+    else:
+        success = False
     if not success:
         raise HTTPException(status_code=404, detail="Item not found in cart")
     return {"message": "Item removed from cart successfully"}
@@ -152,7 +150,11 @@ async def clear_cart(
     """Clear entire cart"""
     user_id = 1  # This should be extracted from JWT token
     
-    success = cart_service.clear_cart(db, user_id)
+    cart_items = db.query(CartItem).filter(CartItem.cart_id == user_id).all()
+    for item in cart_items:
+        db.delete(item)
+    db.commit()
+    success = True
     if not success:
         raise HTTPException(status_code=404, detail="Cart not found")
     return {"message": "Cart cleared successfully"}
@@ -165,7 +167,7 @@ async def get_cart_summary(
     """Get cart summary with totals"""
     user_id = 1  # This should be extracted from JWT token
     
-    cart = cart_service.get_user_cart(db, user_id)
+    cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
         return {
             "total_items": 0,
@@ -200,7 +202,7 @@ async def validate_cart(
     """Validate cart items (check availability, prices, etc.)"""
     user_id = 1  # This should be extracted from JWT token
     
-    cart = cart_service.get_user_cart(db, user_id)
+    cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart or not cart.items:
         return {"valid": True, "message": "Cart is empty"}
     

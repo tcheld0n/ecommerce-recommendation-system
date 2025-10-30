@@ -6,7 +6,7 @@ from core.config import settings
 # Create database engine
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
+    pool_size=20,
     max_overflow=0
 )
 

@@ -5,13 +5,14 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
 import os
+from jose import JWTError, jwt
 
 from core.config import settings
 from core.database import get_db, engine, Base
 from core.security import create_access_token, verify_password, get_password_hash
 from models.user import User
-from schemas.user import UserCreate, UserResponse, Token
-from services.auth_service import AuthService
+from schemas.user import UserCreate, User, Token
+# AuthService removed - implementing logic directly
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -36,8 +37,27 @@ app.add_middleware(
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Initialize services
-auth_service = AuthService()
+# Services initialized directly in endpoints
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    """Get current user from token"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
 @app.get("/")
 async def root():
@@ -47,11 +67,11 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-@app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
     # Check if user already exists
-    existing_user = auth_service.get_user_by_email(db, user_data.email)
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(
             status_code=400,
@@ -59,14 +79,22 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
     
     # Create new user
-    user = auth_service.create_user(db, user_data)
-    return user
+    hashed_password = get_password_hash(user_data.password)
+    db_user = User(
+        email=user_data.email,
+        hashed_password=hashed_password,
+        full_name=user_data.full_name
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 @app.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login user and return access token"""
-    user = auth_service.authenticate_user(db, form_data.username, form_data.password)
-    if not user:
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -80,24 +108,19 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(auth_service.get_current_user)):
+@app.get("/me", response_model=User)
+async def read_users_me(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
 
 @app.post("/verify-token")
 async def verify_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """Verify if token is valid and return user info"""
-    user = auth_service.get_current_user_from_token(token, db)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+    user = get_current_user(token, db)
     return {"valid": True, "user": user}
 
 @app.post("/refresh-token", response_model=Token)
-async def refresh_token(current_user: User = Depends(auth_service.get_current_user)):
+async def refresh_token(current_user: User = Depends(get_current_user)):
     """Refresh access token"""
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -114,7 +137,7 @@ async def logout():
 @app.post("/forgot-password")
 async def forgot_password(email: str, db: Session = Depends(get_db)):
     """Send password reset email"""
-    user = auth_service.get_user_by_email(db, email)
+    user = db.query(User).filter(User.email == email).first()
     if not user:
         # Don't reveal if email exists or not
         return {"message": "If the email exists, a password reset link has been sent"}

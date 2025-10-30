@@ -51,6 +51,11 @@ services:
     build: ./services/api-gateway
     ports:
       - "8000:8000"
+    volumes:
+      - ./core:/app/core
+      - ./models:/app/models
+      - ./schemas:/app/schemas
+      - ./uploads:/app/uploads
     environment:
       - CATALOG_SERVICE_URL=http://catalog-service:8001
       - AUTH_SERVICE_URL=http://auth-service:8002
@@ -67,8 +72,6 @@ services:
       - orders-service
       - payment-service
       - recommendation-service
-    volumes:
-      - ./uploads:/app/uploads
 
   # Catalog Service
   catalog-service:
@@ -85,7 +88,8 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
+      - ./import_csv_only.py:/app/import_csv_only.py
+      - ./livros.csv:/app/livros.csv
 
   # Auth Service
   auth-service:
@@ -101,7 +105,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
 
   # Users Service
   users-service:
@@ -117,7 +120,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
 
   # Cart Service
   cart-service:
@@ -138,7 +140,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
 
   # Orders Service
   orders-service:
@@ -157,7 +158,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
 
   # Payment Service
   payment-service:
@@ -175,7 +175,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
 
   # Recommendation Service
   recommendation-service:
@@ -196,7 +195,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
       - ./ml:/app/ml
 
   # Celery Worker
@@ -213,7 +211,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
       - ./ml:/app/ml
       - ./tasks:/app/tasks
 
@@ -231,7 +228,6 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
-      - ./services:/app/services
       - ./ml:/app/ml
       - ./tasks:/app/tasks
 

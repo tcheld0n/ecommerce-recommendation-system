@@ -4,20 +4,20 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 import httpx
-import os
 
 from core.config import settings
 from core.database import get_db, engine, Base
+from core.utils import get_current_user_id, verify_service_call
 from models.order import Order, OrderItem
-from schemas.order import OrderCreate, OrderResponse, OrderUpdate, OrderItemResponse
-from services.order_service import OrderService
+from schemas.order import OrderCreate, Order, OrderUpdate, OrderItem
+# OrderService removed - implementing logic directly
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Orders Service",
-    description="Serviço de orquestração de pedidos e checkout",
+    description="Serviço de gerenciamento de pedidos",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -32,37 +32,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-order_service = OrderService()
+# Services initialized directly in endpoints
 
 # HTTP client for external service calls
 http_client = httpx.AsyncClient()
 
-async def get_current_user_id(token: str) -> int:
-    """Get current user ID from auth service"""
-    try:
-        response = await http_client.post(
-            f"{settings.AUTH_SERVICE_URL}/verify-token",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        if response.status_code == 200:
-            data = response.json()
-            return data["user"]["id"]
-        else:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Authentication failed")
-
 async def get_cart_data(user_id: int) -> dict:
     """Get cart data from cart service"""
-    try:
-        response = await http_client.get(f"{settings.CART_SERVICE_URL}/cart/summary")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise HTTPException(status_code=400, detail="Cart is empty")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Unable to retrieve cart data")
+    return await verify_service_call(settings.CART_SERVICE_URL, "/cart/summary")
 
 async def validate_cart(user_id: int) -> bool:
     """Validate cart before creating order"""
@@ -111,7 +88,7 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-@app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/orders", response_model=Order, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order_data: OrderCreate,
     token: str = Depends(lambda: None),  # Will be handled by middleware
@@ -135,7 +112,27 @@ async def create_order(
     
     try:
         # Create order
-        order = order_service.create_order(db, user_id, order_data, cart_data)
+        order = Order(
+            user_id=user_id,
+            status="pending",
+            total_amount=cart_data["total_amount"],
+            shipping_address=order_data.shipping_address,
+            billing_address=order_data.billing_address
+        )
+        db.add(order)
+        db.commit()
+        db.refresh(order)
+        
+        # Create order items
+        for item in cart_data["items"]:
+            order_item = OrderItem(
+                order_id=order.id,
+                book_id=item["book_id"],
+                quantity=item["quantity"],
+                unit_price=item["unit_price"]
+            )
+            db.add(order_item)
+        db.commit()
         
         # Clear cart after successful order creation
         await http_client.delete(f"{settings.CART_SERVICE_URL}/cart")
@@ -146,7 +143,7 @@ async def create_order(
         await release_inventory(cart_data["items"])
         raise HTTPException(status_code=500, detail="Order creation failed")
 
-@app.get("/orders", response_model=List[OrderResponse])
+@app.get("/orders", response_model=List[Order])
 async def get_user_orders(
     skip: int = 0,
     limit: int = 100,
@@ -157,12 +154,13 @@ async def get_user_orders(
     """Get current user's orders"""
     user_id = 1  # This should be extracted from JWT token
     
-    orders = order_service.get_user_orders(
-        db, user_id, skip=skip, limit=limit, status_filter=status_filter
-    )
+    query = db.query(Order).filter(Order.user_id == user_id)
+    if status_filter:
+        query = query.filter(Order.status == status_filter)
+    orders = query.offset(skip).limit(limit).all()
     return orders
 
-@app.get("/orders/{order_id}", response_model=OrderResponse)
+@app.get("/orders/{order_id}", response_model=Order)
 async def get_order(
     order_id: int,
     token: str = Depends(lambda: None),  # Will be handled by middleware
@@ -171,7 +169,7 @@ async def get_order(
     """Get a specific order"""
     user_id = 1  # This should be extracted from JWT token
     
-    order = order_service.get_order(db, order_id)
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -181,7 +179,7 @@ async def get_order(
     
     return order
 
-@app.put("/orders/{order_id}", response_model=OrderResponse)
+@app.put("/orders/{order_id}", response_model=Order)
 async def update_order(
     order_id: int,
     order_update: OrderUpdate,
@@ -191,7 +189,7 @@ async def update_order(
     """Update order status"""
     user_id = 1  # This should be extracted from JWT token
     
-    order = order_service.get_order(db, order_id)
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -203,7 +201,12 @@ async def update_order(
     if order_update.status not in ["cancelled"]:
         raise HTTPException(status_code=400, detail="Invalid status update")
     
-    updated_order = order_service.update_order(db, order_id, order_update)
+    # Update order
+    for key, value in order_update.dict(exclude_unset=True).items():
+        setattr(order, key, value)
+    db.commit()
+    db.refresh(order)
+    updated_order = order
     return updated_order
 
 @app.post("/orders/{order_id}/cancel")
@@ -215,7 +218,7 @@ async def cancel_order(
     """Cancel an order"""
     user_id = 1  # This should be extracted from JWT token
     
-    order = order_service.get_order(db, order_id)
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -236,11 +239,16 @@ async def cancel_order(
     
     # Update order status
     order_update = OrderUpdate(status="cancelled")
-    updated_order = order_service.update_order(db, order_id, order_update)
+    # Update order
+    for key, value in order_update.dict(exclude_unset=True).items():
+        setattr(order, key, value)
+    db.commit()
+    db.refresh(order)
+    updated_order = order
     
     return {"message": "Order cancelled successfully", "order": updated_order}
 
-@app.get("/orders/{order_id}/items", response_model=List[OrderItemResponse])
+@app.get("/orders/{order_id}/items", response_model=List[OrderItem])
 async def get_order_items(
     order_id: int,
     token: str = Depends(lambda: None),  # Will be handled by middleware
@@ -249,7 +257,7 @@ async def get_order_items(
     """Get order items"""
     user_id = 1  # This should be extracted from JWT token
     
-    order = order_service.get_order(db, order_id)
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -268,7 +276,7 @@ async def track_order(
     """Track order status"""
     user_id = 1  # This should be extracted from JWT token
     
-    order = order_service.get_order(db, order_id)
+    order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -287,7 +295,7 @@ async def track_order(
     }
 
 # Admin endpoints
-@app.get("/admin/orders", response_model=List[OrderResponse])
+@app.get("/admin/orders", response_model=List[Order])
 async def get_all_orders(
     skip: int = 0,
     limit: int = 100,
@@ -299,9 +307,10 @@ async def get_all_orders(
     user_id = 1  # This should be extracted from JWT token
     
     # TODO: Verify admin permissions
-    orders = order_service.get_orders(
-        db, skip=skip, limit=limit, status_filter=status_filter
-    )
+    query = db.query(Order)
+    if status_filter:
+        query = query.filter(Order.status == status_filter)
+    orders = query.offset(skip).limit(limit).all()
     return orders
 
 @app.put("/admin/orders/{order_id}/status")

@@ -7,8 +7,8 @@ import os
 from core.config import settings
 from core.database import get_db, engine, Base
 from models.book import Book, Category
-from schemas.book import BookCreate, BookUpdate, BookResponse, CategoryCreate, CategoryResponse
-from services.book_service import BookService
+from schemas.book import BookCreate, BookUpdate, Book as BookSchema, CategoryCreate, Category as CategorySchema
+# BookService removed - implementing logic directly
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -30,8 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-book_service = BookService()
+# Services initialized directly in endpoints
 
 @app.get("/")
 async def root():
@@ -42,7 +41,7 @@ async def health_check():
     return {"status": "healthy"}
 
 # Books endpoints
-@app.get("/books", response_model=List[BookResponse])
+@app.get("/books", response_model=List[BookSchema])
 async def get_books(
     skip: int = 0,
     limit: int = 100,
@@ -51,41 +50,63 @@ async def get_books(
     db: Session = Depends(get_db)
 ):
     """Get books with optional filtering"""
-    return book_service.get_books(db, skip=skip, limit=limit, category_id=category_id, search=search)
+    query = db.query(Book)
+    
+    if category_id:
+        query = query.filter(Book.category_id == category_id)
+    
+    if search:
+        query = query.filter(Book.title.ilike(f"%{search}%"))
+    
+    books = query.offset(skip).limit(limit).all()
+    return books
 
-@app.get("/books/{book_id}", response_model=BookResponse)
+@app.get("/books/{book_id}", response_model=BookSchema)
 async def get_book(book_id: int, db: Session = Depends(get_db)):
     """Get a specific book by ID"""
-    book = book_service.get_book(db, book_id)
+    book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     return book
 
-@app.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/books", response_model=BookSchema, status_code=status.HTTP_201_CREATED)
 async def create_book(book: BookCreate, db: Session = Depends(get_db)):
     """Create a new book"""
-    return book_service.create_book(db, book)
+    db_book = Book(**book.dict())
+    db.add(db_book)
+    db.commit()
+    db.refresh(db_book)
+    return db_book
 
-@app.put("/books/{book_id}", response_model=BookResponse)
+@app.put("/books/{book_id}", response_model=BookSchema)
 async def update_book(book_id: int, book: BookUpdate, db: Session = Depends(get_db)):
     """Update a book"""
-    updated_book = book_service.update_book(db, book_id, book)
-    if not updated_book:
+    db_book = db.query(Book).filter(Book.id == book_id).first()
+    if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
-    return updated_book
+    
+    for key, value in book.dict(exclude_unset=True).items():
+        setattr(db_book, key, value)
+    
+    db.commit()
+    db.refresh(db_book)
+    return db_book
 
 @app.delete("/books/{book_id}")
 async def delete_book(book_id: int, db: Session = Depends(get_db)):
     """Delete a book"""
-    success = book_service.delete_book(db, book_id)
-    if not success:
+    db_book = db.query(Book).filter(Book.id == book_id).first()
+    if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
+    
+    db.delete(db_book)
+    db.commit()
     return {"message": "Book deleted successfully"}
 
 @app.get("/books/{book_id}/inventory")
 async def get_book_inventory(book_id: int, db: Session = Depends(get_db)):
     """Get inventory information for a book"""
-    book = book_service.get_book(db, book_id)
+    book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     return {
@@ -102,21 +123,31 @@ async def update_inventory(
     db: Session = Depends(get_db)
 ):
     """Update inventory quantity for a book"""
-    success = book_service.update_inventory(db, book_id, quantity_change)
-    if not success:
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    
+    book.stock_quantity += quantity_change
+    if book.stock_quantity < 0:
+        book.stock_quantity = 0
+    
+    db.commit()
     return {"message": "Inventory updated successfully"}
 
 # Categories endpoints
-@app.get("/categories", response_model=List[CategoryResponse])
+@app.get("/categories", response_model=List[CategorySchema])
 async def get_categories(db: Session = Depends(get_db)):
     """Get all categories"""
-    return book_service.get_categories(db)
+    return db.query(Category).all()
 
-@app.post("/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/categories", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
 async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     """Create a new category"""
-    return book_service.create_category(db, category)
+    db_category = Category(**category.dict())
+    db.add(db_category)
+    db.commit()
+    db.refresh(db_category)
+    return db_category
 
 if __name__ == "__main__":
     import uvicorn

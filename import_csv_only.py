@@ -98,7 +98,7 @@ def import_books_from_csv(csv_path: str):
         
         print(f"📚 Importando dados de: {csv_path}")
         
-        with open(csv_path, 'r', encoding='utf-8') as file:
+        with open(csv_path, 'r', encoding='utf-8-sig') as file:
             csv_reader = csv.DictReader(file, delimiter=';')
             
             for row_num, row in enumerate(csv_reader, start=2):
@@ -109,7 +109,12 @@ def import_books_from_csv(csv_path: str):
                     pages = row.get('paginas', '0')
                     year = row.get('ano', '0')
                     
+                    if row_num <= 5:  # Debug para as primeiras linhas
+                        print(f"🔍 Linha {row_num} - Título: '{title}', Autor: '{author}', ISBN: '{isbn}'")
+                    
                     if not title or not author or not isbn:
+                        if row_num <= 5:  # Debug para as primeiras linhas
+                            print(f"❌ Linha {row_num} pulada - Título: '{title}', Autor: '{author}', ISBN: '{isbn}'")
                         skipped_count += 1
                         continue
                     
