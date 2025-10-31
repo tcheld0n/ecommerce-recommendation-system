@@ -29,23 +29,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Search
-  elasticsearch:
-    image: elasticsearch:8.11.0
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   # API Gateway
   api-gateway:
     build: ./services/api-gateway
@@ -56,6 +39,7 @@ services:
       - ./models:/app/models
       - ./schemas:/app/schemas
       - ./uploads:/app/uploads
+      - ./services/api-gateway/api_gateway.py:/app/api_gateway.py
     environment:
       - CATALOG_SERVICE_URL=http://catalog-service:8001
       - AUTH_SERVICE_URL=http://auth-service:8002
@@ -90,6 +74,7 @@ services:
       - ./schemas:/app/schemas
       - ./import_csv_only.py:/app/import_csv_only.py
       - ./livros.csv:/app/livros.csv
+      - ./services/catalog-service/catalog_service.py:/app/catalog_service.py
 
   # Auth Service
   auth-service:
@@ -105,6 +90,7 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
+      - ./services/auth-service/auth_service.py:/app/auth_service.py
 
   # Users Service
   users-service:
@@ -140,6 +126,7 @@ services:
       - ./core:/app/core
       - ./models:/app/models
       - ./schemas:/app/schemas
+      - ./services/cart-service/cart_service.py:/app/cart_service.py
 
   # Orders Service
   orders-service:
@@ -234,4 +221,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  elasticsearch_data:

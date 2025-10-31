@@ -639,5 +639,3 @@ Se você encontrar algum problema ou tiver dúvidas:
 6. Abra uma issue no GitHub
 
 ## 📖 Documentação Adicional
-
-Para instruções mais detalhadas de execução, consulte o arquivo `GUIA_EXECUCAO.md`.

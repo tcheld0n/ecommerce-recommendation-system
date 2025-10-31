@@ -6,17 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
 
 export function Cart() {
-  const { cart, getCart, updateCartItem, removeFromCart, clearCart, isLoading } = useCartStore()
+  const { cart, getCart, updateCartItem, removeFromCart, clearCart, isLoading, error } = useCartStore()
 
   useEffect(() => {
     getCart()
   }, [getCart])
 
-  const handleQuantityChange = async (itemId: string, newQuantity: number) => {
+  useEffect(() => {
+    if (error) {
+      console.error('Cart error:', error)
+    }
+  }, [error])
+
+  const handleQuantityChange = async (bookId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      await removeFromCart(itemId)
+      await removeFromCart(bookId)
     } else {
-      await updateCartItem(itemId, newQuantity)
+      await updateCartItem(bookId, newQuantity)
     }
   }
 
@@ -42,6 +48,18 @@ export function Cart() {
     )
   }
 
+  if (error && !cart) {
+    // Só mostrar erro completo se não tiver dados do carrinho
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Erro ao carregar carrinho: {error}</p>
+          <Button onClick={() => getCart()}>Tentar novamente</Button>
+        </div>
+      </div>
+    )
+  }
+
   if (!cart || cart.items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -59,6 +77,14 @@ export function Cart() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {error && (
+        <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+          <p className="text-sm">{error}</p>
+          <Button size="sm" variant="outline" onClick={() => getCart()} className="mt-2">
+            Tentar novamente
+          </Button>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Carrinho de Compras</h1>
         <Button variant="outline" onClick={clearCart}>
@@ -97,7 +123,7 @@ export function Cart() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      onClick={() => handleQuantityChange(item.book_id, item.quantity - 1)}
                     >
                       <Minus className="w-4 h-4" />
                     </Button>
@@ -105,7 +131,7 @@ export function Cart() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      onClick={() => handleQuantityChange(item.book_id, item.quantity + 1)}
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -118,7 +144,7 @@ export function Cart() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.book_id)}
                       className="mt-2 text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />

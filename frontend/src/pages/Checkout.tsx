@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCartStore } from '@/stores/cartStore'
 import { useOrderService } from '@/services/orderService'
+import { authService } from '@/services/authService'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,7 +49,56 @@ export function Checkout() {
       return
     }
 
+    // Verificar se o usuário está autenticado
+    if (!authService.isAuthenticated()) {
+      toast({
+        title: "Autenticação necessária",
+        description: "Por favor, faça login para finalizar a compra",
+        variant: "destructive",
+      })
+      navigate('/login')
+      return
+    }
+
+    // Verificar se o token existe no localStorage
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      toast({
+        title: "Sessão expirada",
+        description: "Por favor, faça login novamente",
+        variant: "destructive",
+      })
+      navigate('/login')
+      return
+    }
+
     setIsProcessing(true)
+    
+    // Tentar garantir que o token está válido antes de criar o pedido
+    // Se falhar, ainda vamos tentar criar o pedido e deixar o interceptor lidar com o refresh
+    console.log('Verificando validade do token antes de criar pedido...')
+    try {
+      const isTokenValid = await authService.ensureValidToken()
+      console.log('Resultado da verificação de token:', isTokenValid)
+      
+      if (!isTokenValid) {
+        console.warn('Token não pôde ser renovado proativamente, mas tentando criar pedido mesmo assim...')
+        // Não vamos redirecionar aqui - vamos tentar criar o pedido
+        // O interceptor de resposta vai tentar renovar automaticamente se receber 401
+      } else {
+        console.log('Token validado com sucesso, prosseguindo com criação do pedido...')
+      }
+    } catch (error: any) {
+      console.warn('Erro ao verificar/renovar token proativamente:', {
+        error,
+        message: error.message,
+        response: error.response?.data
+      })
+      // Não vamos bloquear aqui - vamos tentar criar o pedido mesmo assim
+      // O interceptor vai tentar renovar automaticamente se necessário
+      console.log('Tentando criar pedido mesmo assim, interceptor vai lidar com refresh se necessário...')
+    }
+
     try {
       const orderData = {
         shipping_address: {
@@ -68,6 +118,11 @@ export function Checkout() {
         }))
       }
 
+      console.log('Criando pedido...', { 
+        hasToken: !!token, 
+        itemsCount: orderData.items.length 
+      })
+
       const order = await createOrder(orderData)
       
       toast({
@@ -77,11 +132,38 @@ export function Checkout() {
 
       navigate(`/orders/${order.id}`)
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.response?.data?.detail || "Erro ao processar pedido",
-        variant: "destructive",
+      console.error('Erro ao criar pedido:', error)
+      
+      const errorDetail = error.response?.data?.detail || error.message || "Erro ao processar pedido"
+      
+      console.error('Erro ao criar pedido:', {
+        status: error.response?.status,
+        detail: errorDetail,
+        url: error.config?.url,
+        method: error.config?.method
       })
+      
+      // Tratar especificamente o erro "Token necessário" ou 401
+      if (errorDetail.includes('necessário') || errorDetail.includes('Token') || error.response?.status === 401) {
+        // Se ainda tivermos refresh token, pode ser um erro temporário
+        const refreshToken = localStorage.getItem('refresh_token')
+        if (refreshToken) {
+          console.log('Ainda temos refresh token, mas não conseguimos renovar. Redirecionando para login.')
+        }
+        
+        toast({
+          title: "Sessão expirada",
+          description: "Sua sessão expirou. Por favor, faça login novamente",
+          variant: "destructive",
+        })
+        navigate('/login')
+      } else {
+        toast({
+          title: "Erro",
+          description: errorDetail,
+          variant: "destructive",
+        })
+      }
     } finally {
       setIsProcessing(false)
     }

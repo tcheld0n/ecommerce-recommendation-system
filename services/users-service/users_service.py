@@ -1,29 +1,35 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+"""
+Users Service - Gerenciamento de Usuários e Perfis
+Serviço simples e funcional para gerenciar perfis de usuários
+"""
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import os
+import time
 
 from core.config import settings
 from core.database import get_db, engine, Base
 from core.utils import get_current_user_id
+from core.logging import setup_logging, log_request, log_response, log_error, log_database_operation
 from models.user import User
-from schemas.user import User, UserUpdate
-# AuthService removed - using core.utils instead
+from schemas.user import UserUpdate, User as UserSchema
 
-# Create database tables
+logger = setup_logging("users-service")
+
+# Criar tabelas do banco
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Users Service",
-    description="Serviço de gerenciamento de usuários, perfis e endereços",
+    description="Serviço de gerenciamento de usuários e perfis",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# CORS middleware
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -35,16 +41,38 @@ app.add_middleware(
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Services initialized directly in endpoints
+# Middleware de logging
+@app.middleware("http")
+async def log_requests_middleware(request: Request, call_next):
+    """Middleware para logar todas as requisições"""
+    start_time = time.time()
+    method = request.method
+    path = request.url.path
+    
+    log_request(logger, method, path, client_ip=request.client.host if request.client else None)
+    
+    try:
+        response = await call_next(request)
+        duration_ms = (time.time() - start_time) * 1000
+        log_response(logger, method, path, response.status_code, duration_ms)
+        return response
+    except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        log_error(logger, e, f"{method} {path}")
+        log_response(logger, method, path, 500, duration_ms, error=str(e))
+        raise
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    """Get current user from token"""
-    user_id = get_current_user_id(token)
+# Dependency: obter usuário atual
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    """Obter usuário atual do token"""
+    user_id = await get_current_user_id(token)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        logger.warning(f"Usuário não encontrado | user_id={user_id}")
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return user
 
+# Endpoints básicos
 @app.get("/")
 async def root():
     return {"message": "Users Service", "version": "1.0.0"}
@@ -53,142 +81,68 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-# User profile endpoints
-@app.get("/users/me", response_model=User)
+# Perfil do usuário
+@app.get("/users/me", response_model=UserSchema)
 async def get_current_user_profile(current_user: User = Depends(get_current_user)):
-    """Get current user profile"""
+    """Obter perfil do usuário atual"""
+    logger.info(f"Obtendo perfil | user_id={current_user.id}")
     return current_user
 
-@app.put("/users/me", response_model=User)
+@app.put("/users/me", response_model=UserSchema)
 async def update_current_user(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update current user profile"""
-    # Update user
+    """Atualizar perfil do usuário atual"""
+    logger.info(f"Atualizando perfil | user_id={current_user.id}")
+    
     for key, value in user_update.dict(exclude_unset=True).items():
         setattr(current_user, key, value)
+    
     db.commit()
     db.refresh(current_user)
-    updated_user = current_user
-    if not updated_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return updated_user
+    log_database_operation(logger, "UPDATE", "users", current_user.id)
+    logger.info(f"Perfil atualizado | user_id={current_user.id}")
+    return current_user
 
 @app.delete("/users/me")
 async def delete_current_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete current user account"""
+    """Deletar conta do usuário atual"""
+    logger.info(f"Deletando conta | user_id={current_user.id}")
     db.delete(current_user)
     db.commit()
-    return {"message": "User account deleted successfully"}
+    log_database_operation(logger, "DELETE", "users", current_user.id)
+    return {"message": "Conta deletada com sucesso"}
 
-@app.get("/users/{user_id}", response_model=User)
-async def get_user(
-    user_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get user by ID (admin only or own profile)"""
-    if current_user.id != user_id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-# Address endpoints removed - no Address model available
+# Endereços (placeholder simples)
 @app.get("/users/me/addresses")
-async def get_user_addresses(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get current user's addresses - not implemented"""
-    return {"message": "Address functionality not implemented"}
+async def get_user_addresses(current_user: User = Depends(get_current_user)):
+    """Obter endereços do usuário (não implementado)"""
+    return {"message": "Funcionalidade de endereços não implementada", "addresses": []}
 
 @app.post("/users/me/addresses")
-async def create_user_address(
-    address: dict,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Create a new address for current user - not implemented"""
-    return {"message": "Address functionality not implemented"}
+async def create_user_address(address: dict, current_user: User = Depends(get_current_user)):
+    """Criar endereço (não implementado)"""
+    return {"message": "Funcionalidade de endereços não implementada"}
 
-@app.get("/users/me/addresses/{address_id}")
-async def get_user_address(
-    address_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get a specific address for current user - not implemented"""
-    return {"message": "Address functionality not implemented"}
-
-@app.put("/users/me/addresses/{address_id}")
-async def update_user_address(
-    address_id: int,
-    address_update: dict,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Update a specific address for current user - not implemented"""
-    return {"message": "Address functionality not implemented"}
-
-@app.delete("/users/me/addresses/{address_id}")
-async def delete_user_address(
-    address_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Delete a specific address for current user - not implemented"""
-    return {"message": "Address functionality not implemented"}
-
-@app.patch("/users/me/addresses/{address_id}/set-default")
-async def set_default_address(
-    address_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Set an address as default for current user - not implemented"""
-    return {"message": "Address functionality not implemented"}
-
-# Admin endpoints
-@app.get("/admin/users", response_model=List[User])
+# Admin (simplificado)
+@app.get("/admin/users", response_model=List[UserSchema])
 async def get_all_users(
     skip: int = 0,
     limit: int = 100,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all users (admin only)"""
+    """Listar todos os usuários (admin apenas)"""
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(status_code=403, detail="Permissão negada")
     
-    return db.query(User).offset(skip).limit(limit).all()
-
-@app.patch("/admin/users/{user_id}/activate")
-async def activate_user(
-    user_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Activate/deactivate user (admin only)"""
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    user.is_active = not user.is_active
-    db.commit()
-    success = True
-    if not success:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"message": "User status updated successfully"}
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
@@ -20,11 +20,10 @@ class CategoryUpdate(BaseModel):
     parent_id: Optional[UUID] = None
 
 class Category(CategoryBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 class BookTagBase(BaseModel):
     tag: str
@@ -33,12 +32,11 @@ class BookTagCreate(BookTagBase):
     pass
 
 class BookTag(BookTagBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     book_id: UUID
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 class BookBase(BaseModel):
     isbn: str
@@ -69,6 +67,8 @@ class BookUpdate(BaseModel):
     tags: Optional[List[str]] = None
 
 class Book(BookBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     average_rating: float
     total_reviews: int
@@ -76,9 +76,6 @@ class Book(BookBase):
     updated_at: datetime
     category: Optional[Category] = None
     tags: Optional[List[BookTag]] = []
-    
-    class Config:
-        from_attributes = True
 
 class BookSearch(BaseModel):
     query: Optional[str] = None

@@ -29,20 +29,37 @@ export const useCartStore = create<CartState & CartActions>()(
         set({ isLoading: true, error: null })
         try {
           const cart = await cartService.getCart()
-          set({ cart, isLoading: false })
+          console.log('Cart loaded:', cart)
+          set({ cart, isLoading: false, error: null })
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.detail || 'Failed to get cart', 
-            isLoading: false 
-          })
+          console.error('Error loading cart:', error)
+          const errorMessage = error.response?.data?.detail || error.message || 'Failed to get cart'
+          
+          // Se for erro 401, manter o carrinho existente mas mostrar erro
+          if (error.response?.status === 401) {
+            console.warn('Authentication error - keeping existing cart data')
+            set({ 
+              error: 'Sessão expirada. Por favor, faça login novamente.',
+              isLoading: false
+              // Não limpar cart aqui para manter dados visuais
+            })
+          } else {
+            set({ 
+              error: errorMessage, 
+              isLoading: false,
+              // Só limpar cart se não for erro de autenticação
+              cart: error.response?.status === 401 ? get().cart : null
+            })
+          }
         }
       },
 
       addToCart: async (bookId: string, quantity: number) => {
         set({ isLoading: true, error: null })
         try {
-          const cart = await cartService.addToCart({ book_id: bookId, quantity })
-          set({ cart, isLoading: false })
+          await cartService.addToCart({ book_id: bookId, quantity })
+          // Recarregar carrinho completo após adicionar item
+          await get().getCart()
         } catch (error: any) {
           set({ 
             error: error.response?.data?.detail || 'Failed to add to cart', 
@@ -55,8 +72,10 @@ export const useCartStore = create<CartState & CartActions>()(
       updateCartItem: async (itemId: string, quantity: number) => {
         set({ isLoading: true, error: null })
         try {
-          const cart = await cartService.updateCartItem(itemId, { quantity })
-          set({ cart, isLoading: false })
+          // O backend retorna apenas o item atualizado, então precisamos recarregar o carrinho completo
+          await cartService.updateCartItem(itemId, { quantity })
+          // Recarregar carrinho completo após atualizar item
+          await get().getCart()
         } catch (error: any) {
           set({ 
             error: error.response?.data?.detail || 'Failed to update cart item', 
