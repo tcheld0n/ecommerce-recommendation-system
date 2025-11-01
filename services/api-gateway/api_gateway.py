@@ -55,6 +55,7 @@ SERVICE_URLS = {
     "orders": settings.ORDERS_SERVICE_URL,
     "payment": settings.PAYMENT_SERVICE_URL,
     "recommendation": settings.RECOMMENDATION_SERVICE_URL,
+    "shipping": settings.SHIPPING_SERVICE_URL,
 }
 
 # Middleware de logging
@@ -437,6 +438,45 @@ async def get_recommendations(request: Request, limit: int = 10):
     authorization = request.headers.get("Authorization")
     headers = {"Authorization": authorization} if authorization else {}
     return await call_service("recommendation", "GET", "/recommendations", params={"limit": limit}, headers=headers)
+
+@app.get("/api/v1/recommendations/for-you")
+async def get_recommendations_for_you(request: Request, limit: int = 10):
+    """Obter recomendações personalizadas (compatível com frontend monolítico)
+    Proxy para o Recommendation Service em /recommendations (usa Authorization, se presente)
+    """
+    authorization = request.headers.get("Authorization")
+    headers = {"Authorization": authorization} if authorization else {}
+    return await call_service("recommendation", "GET", "/recommendations", params={"limit": limit}, headers=headers)
+
+@app.post("/api/v1/recommendations/interactions")
+async def post_recommendation_interaction(interaction_data: dict):
+    """Registrar interação de recomendação (VIEW, ADD_TO_CART, PURCHASE)
+    Encaminha para Recommendation Service em /interactions
+    """
+    return await call_service("recommendation", "POST", "/interactions", json=interaction_data)
+
+@app.get("/api/v1/recommendations/books/{book_id}/similar")
+async def get_similar_books(book_id: str, limit: int = 10):
+    """Obter livros similares ao informado (proxy para Recommendation Service)
+    Compatível com frontend que chama /api/v1/recommendations/books/{book_id}/similar
+    """
+    return await call_service("recommendation", "GET", f"/books/{book_id}/similar", params={"limit": limit})
+
+# ========== SHIPPING SERVICE ROUTES ==========
+@app.post("/api/v1/shipping/quote")
+async def shipping_quote(quote_request: dict):
+    """Calcular cotação de frete"""
+    return await call_service("shipping", "POST", "/quote", json=quote_request)
+
+@app.post("/api/v1/shipping/shipments")
+async def create_shipment(payload: dict):
+    """Criar envio e obter código de rastreio"""
+    return await call_service("shipping", "POST", "/shipments", json=payload)
+
+@app.get("/api/v1/shipping/track/{tracking_code}")
+async def track_shipment(tracking_code: str):
+    """Rastrear envio"""
+    return await call_service("shipping", "GET", f"/track/{tracking_code}")
 
 if __name__ == "__main__":
     import uvicorn

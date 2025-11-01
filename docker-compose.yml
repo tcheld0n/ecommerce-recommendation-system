@@ -48,6 +48,7 @@ services:
       - ORDERS_SERVICE_URL=http://orders-service:8005
       - PAYMENT_SERVICE_URL=http://payment-service:8006
       - RECOMMENDATION_SERVICE_URL=http://recommendation-service:8007
+      - SHIPPING_SERVICE_URL=http://shipping-service:8008
     depends_on:
       - catalog-service
       - auth-service
@@ -56,6 +57,7 @@ services:
       - orders-service
       - payment-service
       - recommendation-service
+      - shipping-service
 
   # Catalog Service
   catalog-service:
@@ -200,6 +202,26 @@ services:
       - ./schemas:/app/schemas
       - ./ml:/app/ml
       - ./tasks:/app/tasks
+
+  # Shipping Service
+  shipping-service:
+    build: ./services/shipping-service
+    ports:
+      - "8008:8008"
+    # Use default CORS_ORIGINS from core.config (or set JSON string, e.g. ["http://localhost:3000","http://localhost:5173"])
+    environment: []
+    restart: unless-stopped
+    depends_on: []
+    volumes:
+      - ./core:/app/core
+      - ./models:/app/models
+      - ./schemas:/app/schemas
+      - ./services/shipping-service/shipping_service.py:/app/shipping_service.py
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8008/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Celery Beat
   celery-beat:

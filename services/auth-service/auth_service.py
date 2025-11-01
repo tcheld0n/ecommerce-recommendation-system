@@ -164,7 +164,7 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 @app.post("/refresh-token", response_model=Token)
-@app.post("/refresh", response_model=Token)  # Endpoint alternativo para compatibilidade
+@app.post("/refresh", response_model=Token) 
 async def refresh_token(request: Request, db: Session = Depends(get_db)):
     """Renovar token de acesso usando refresh token"""
     from pydantic import BaseModel

@@ -1,5 +1,6 @@
 import { api } from './api'
 import { BookRecommendation, RecommendationResponse } from '@/types/recommendation'
+import type { Book } from '@/types/book'
 
 export const recommendationService = {
   async getPersonalizedRecommendations(
@@ -13,24 +14,34 @@ export const recommendationService = {
   },
 
   async getTrendingBooks(limit: number = 10): Promise<BookRecommendation[]> {
-    const response = await api.get('/recommendations/trending', {
-      params: { limit }
-    })
-    return response.data
+    const response = await api.get('/books/recent', { params: { limit } })
+    const books: Book[] = response.data
+    return books.map((b) => ({
+      book_id: b.id,
+      score: 0,
+      book: b,
+    }))
   },
 
   async getPopularBooks(limit: number = 10): Promise<BookRecommendation[]> {
-    const response = await api.get('/recommendations/popular', {
-      params: { limit }
-    })
-    return response.data
+    const response = await api.get('/books/popular', { params: { limit } })
+    const books: Book[] = response.data
+    return books.map((b) => ({
+      book_id: b.id,
+      score: 0,
+      book: b,
+    }))
   },
 
   async getSimilarBooks(bookId: string, limit: number = 10): Promise<BookRecommendation[]> {
-    const response = await api.get(`/recommendations/books/${bookId}/similar`, {
-      params: { limit }
-    })
-    return response.data
+    try {
+      const response = await api.get(`/recommendations/books/${bookId}/similar`, {
+        params: { limit }
+      })
+      return response.data
+    } catch (err) {
+      return []
+    }
   },
 
   async recordInteraction(bookId: string, interactionType: string): Promise<void> {

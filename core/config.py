@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     ORDERS_SERVICE_URL: str = "http://localhost:8005"
     PAYMENT_SERVICE_URL: str = "http://localhost:8006"
     RECOMMENDATION_SERVICE_URL: str = "http://localhost:8007"
+    SHIPPING_SERVICE_URL: str = "http://localhost:8008"
     
     # Payment (Placeholder)
     STRIPE_SECRET_KEY: Optional[str] = None

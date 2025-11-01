@@ -12,6 +12,7 @@ import { Profile } from '@/pages/Profile'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import MyOrders from '@/pages/MyOrders'
+import Shipping from '@/pages/Shipping.tsx'
 import { AdminDashboard } from '@/pages/Admin/Dashboard'
 import { BookManagement } from '@/pages/Admin/BookManagement'
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/checkout/success/:orderId" element={<OrderConfirmation />} />
           <Route path="/orders" element={<MyOrders />} />
+          <Route path="/shipping" element={<Shipping />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
