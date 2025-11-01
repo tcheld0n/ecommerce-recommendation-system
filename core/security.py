@@ -91,6 +91,9 @@ def verify_token(token: str, token_type: str = "access") -> dict:
                 detail="Invalid token type"
             )
         return payload
+    except HTTPException:
+        # Re-raise HTTPException as-is (for invalid token type)
+        raise
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

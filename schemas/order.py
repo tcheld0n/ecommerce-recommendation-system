@@ -1,9 +1,16 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from uuid import UUID
 from decimal import Decimal
 from models.order import OrderStatus, PaymentStatus
+
+# Importar schema Book para usar em OrderItemWithBook
+try:
+    from schemas.book import Book as BookSchema
+except ImportError:
+    # Fallback caso o import falhe
+    BookSchema = BaseModel  # Usar BaseModel como placeholder
 
 class OrderItemBase(BaseModel):
     book_id: UUID
@@ -14,15 +21,18 @@ class OrderItemCreate(OrderItemBase):
     pass
 
 class OrderItem(OrderItemBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     subtotal: Decimal
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 class OrderItemWithBook(OrderItem):
-    book: Optional[Dict[str, Any]] = None
+    model_config = ConfigDict(from_attributes=True)
+    
+    # Usar BookSchema para aceitar objetos ORM diretamente
+    # O Pydantic vai automaticamente ler os atributos do objeto Book SQLAlchemy
+    book: Optional[BookSchema] = None
 
 class OrderBase(BaseModel):
     shipping_address: Dict[str, Any]
@@ -37,6 +47,8 @@ class OrderUpdate(BaseModel):
     tracking_code: Optional[str] = None
 
 class Order(OrderBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     user_id: UUID
     status: OrderStatus
@@ -46,16 +58,12 @@ class Order(OrderBase):
     created_at: datetime
     updated_at: datetime
     items: List[OrderItemWithBook] = []
-    
-    class Config:
-        from_attributes = True
 
 class OrderSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: UUID
     status: OrderStatus
     total_amount: Decimal
     created_at: datetime
     items_count: int
-    
-    class Config:
-        from_attributes = True

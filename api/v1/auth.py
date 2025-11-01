@@ -5,8 +5,12 @@ from core.dependencies import get_current_user
 from services.auth_service import AuthService
 from schemas.user import UserCreate, UserLogin, Token, User as UserSchema
 from models.user import User
+from pydantic import BaseModel
 
 router = APIRouter()
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 @router.post("/register", response_model=Token)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -23,10 +27,10 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
     return token
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """Refresh access token."""
     auth_service = AuthService(db)
-    token = await auth_service.refresh_access_token(refresh_token)
+    token = await auth_service.refresh_access_token(request.refresh_token)
     return token
 
 @router.get("/me", response_model=UserSchema)

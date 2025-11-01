@@ -12,9 +12,10 @@ export const cartService = {
     return response.data
   },
 
-  async updateCartItem(itemId: string, itemData: CartItemUpdate): Promise<Cart> {
-    const response = await api.put(`/cart/items/${itemId}`, itemData)
-    return response.data
+  async updateCartItem(itemId: string, itemData: CartItemUpdate): Promise<void> {
+    // O backend retorna apenas o CartItem, não o Cart completo
+    // Então não precisamos retornar nada aqui, o store vai recarregar o carrinho
+    await api.put(`/cart/items/${itemId}`, itemData)
   },
 
   async removeFromCart(itemId: string): Promise<void> {
