@@ -617,12 +617,6 @@ Este projeto foi **refatorado** para eliminar over-engineering e focar no aprend
 3. Otimize a experiência do usuário
 4. Desenvolva identidade visual
 
-## 📄 **Documentação**
-
-- [📋 Status de Implementação](./IMPLEMENTATION_STATUS.md) - Status detalhado por sprint
-- [🏗️ Arquitetura Simplificada](./SIMPLIFIED_ARCHITECTURE.md) - Guia da arquitetura
-- [📚 Documentação da API](http://localhost:8000/docs) - Swagger/OpenAPI
-
 ## 📄 **Licença**
 
 Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
