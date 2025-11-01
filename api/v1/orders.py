@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from core.database import get_db
 from core.dependencies import get_current_user, get_current_admin_user
 from schemas.order import Order, OrderCreate, OrderUpdate, OrderSummary
@@ -7,6 +7,7 @@ from models.user import User
 from models.order import Order as OrderModel, OrderItem as OrderItemModel
 from decimal import Decimal
 from services.recommendation_service import RecommendationService
+import uuid
 
 router = APIRouter()
 
@@ -80,7 +81,15 @@ async def get_order(
     db: Session = Depends(get_db)
 ):
     """Get order by ID."""
-    order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
+    try:
+        order_uuid = uuid.UUID(order_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order ID format")
+    
+    order = db.query(OrderModel).options(
+        joinedload(OrderModel.items).joinedload(OrderItemModel.book)
+    ).filter(OrderModel.id == order_uuid).first()
+    
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 

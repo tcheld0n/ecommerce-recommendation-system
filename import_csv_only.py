@@ -26,16 +26,19 @@ from core.config import settings
 def create_default_categories(db: Session):
     """Cria categorias padrão se não existirem"""
     default_categories = [
-        {"name": "Ficção", "slug": "ficcao", "description": "Livros de ficção"},
-        {"name": "Não-Ficção", "slug": "nao-ficcao", "description": "Livros de não-ficção"},
-        {"name": "Tecnologia", "slug": "tecnologia", "description": "Livros sobre tecnologia"},
-        {"name": "Negócios", "slug": "negocios", "description": "Livros sobre negócios e finanças"},
-        {"name": "Biografia", "slug": "biografia", "description": "Biografias e memórias"},
-        {"name": "História", "slug": "historia", "description": "Livros de história"},
-        {"name": "Ciência", "slug": "ciencia", "description": "Livros de ciência"},
-        {"name": "Arte", "slug": "arte", "description": "Livros sobre arte e cultura"},
+        {"name": "Ficção Científica", "slug": "ficcao-cientifica", "description": "Livros de ficção científica"},
+        {"name": "Fantasia", "slug": "fantasia", "description": "Livros de fantasia"},
+        {"name": "Romance", "slug": "romance", "description": "Romances"},
+        {"name": "Suspense/Thriller", "slug": "suspense-thriller", "description": "Livros de suspense e thriller"},
+        {"name": "Horror", "slug": "horror", "description": "Livros de horror"},
+        {"name": "Ficção Histórica", "slug": "ficcao-historica", "description": "Ficção histórica"},
+        {"name": "Aventura", "slug": "aventura", "description": "Livros de aventura"},
+        {"name": "Desenvolvimento Pessoal", "slug": "desenvolvimento-pessoal", "description": "Livros de desenvolvimento pessoal"},
+        {"name": "Negócios/Economia", "slug": "negocios-economia", "description": "Livros sobre negócios e economia"},
+        {"name": "Educação", "slug": "educacao", "description": "Livros de educação"},
         {"name": "Infantil", "slug": "infantil", "description": "Livros infantis"},
-        {"name": "Outros", "slug": "outros", "description": "Outras categorias"}
+        {"name": "Distopia", "slug": "distopia", "description": "Livros distópicos"},
+        {"name": "Ficção Geral", "slug": "ficcao-geral", "description": "Ficção geral"},
     ]
     
     for cat_data in default_categories:
@@ -46,30 +49,37 @@ def create_default_categories(db: Session):
     
     db.commit()
 
-def get_category_by_name(db: Session, book_title: str, book_author: str) -> Category:
-    """Determina a categoria do livro baseado no título e autor"""
-    category_mapping = {
-        "ficcao": ["romance", "ficção", "novela", "conto", "fantasia", "ficção científica"],
-        "tecnologia": ["tecnologia", "programação", "computação", "software", "hardware", "digital"],
-        "negocios": ["negócios", "finanças", "economia", "gestão", "marketing", "empreendedorismo"],
-        "biografia": ["biografia", "memórias", "autobiografia"],
-        "historia": ["história", "histórico", "guerra", "política"],
-        "ciencia": ["ciência", "científico", "pesquisa", "estudo"],
-        "arte": ["arte", "cultura", "música", "cinema", "teatro"],
-        "infantil": ["infantil", "criança", "baby", "kids"]
-    }
+def get_category_by_name(db: Session, category_name: str = None) -> Category:
+    """Obtém a categoria do livro pela coluna categoria do CSV ou usa Ficção Geral como padrão"""
     
-    default_category = db.query(Category).filter(Category.slug == "outros").first()
+    if category_name:
+        # Remove espaços em branco
+        category_name = category_name.strip()
+        
+        # Mapeia nomes de categoria para slugs
+        category_slug_map = {
+            "Ficção Científica": "ficcao-cientifica",
+            "Fantasia": "fantasia",
+            "Romance": "romance",
+            "Suspense/Thriller": "suspense-thriller",
+            "Horror": "horror",
+            "Ficção Histórica": "ficcao-historica",
+            "Aventura": "aventura",
+            "Desenvolvimento Pessoal": "desenvolvimento-pessoal",
+            "Negócios/Economia": "negocios-economia",
+            "Educação": "educacao",
+            "Infantil": "infantil",
+            "Distopia": "distopia",
+            "Ficção Geral": "ficcao-geral",
+        }
+        
+        slug = category_slug_map.get(category_name, "ficcao-geral")
+        category = db.query(Category).filter(Category.slug == slug).first()
+        if category:
+            return category
     
-    text_to_analyze = f"{book_title} {book_author}".lower()
-    
-    for slug, keywords in category_mapping.items():
-        for keyword in keywords:
-            if keyword in text_to_analyze:
-                category = db.query(Category).filter(Category.slug == slug).first()
-                if category:
-                    return category
-    
+    # Padrão: Ficção Geral
+    default_category = db.query(Category).filter(Category.slug == "ficcao-geral").first()
     return default_category
 
 def clean_isbn(isbn: str) -> str:
@@ -108,9 +118,10 @@ def import_books_from_csv(csv_path: str):
                     isbn = clean_isbn(row.get('isbn', ''))
                     pages = row.get('paginas', '0')
                     year = row.get('ano', '0')
+                    categoria = row.get('categoria', '').strip()
                     
                     if row_num <= 5:  # Debug para as primeiras linhas
-                        print(f"🔍 Linha {row_num} - Título: '{title}', Autor: '{author}', ISBN: '{isbn}'")
+                        print(f"🔍 Linha {row_num} - Título: '{title}', Autor: '{author}', ISBN: '{isbn}', Categoria: '{categoria}'")
                     
                     if not title or not author or not isbn:
                         if row_num <= 5:  # Debug para as primeiras linhas
@@ -130,7 +141,7 @@ def import_books_from_csv(csv_path: str):
                         skipped_count += 1
                         continue
                     
-                    category = get_category_by_name(db, title, author)
+                    category = get_category_by_name(db, categoria)
                     
                     book = Book(
                         isbn=isbn,

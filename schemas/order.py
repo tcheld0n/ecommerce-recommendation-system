@@ -5,12 +5,16 @@ from uuid import UUID
 from decimal import Decimal
 from models.order import OrderStatus, PaymentStatus
 
-# Importar schema Book para usar em OrderItemWithBook
-try:
-    from schemas.book import Book as BookSchema
-except ImportError:
-    # Fallback caso o import falhe
-    BookSchema = BaseModel  # Usar BaseModel como placeholder
+# Schema simples de Book sem relacionamentos circulares
+class BookSimple(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    title: str
+    author: str
+    isbn: str
+    price: Decimal
+    cover_image_url: Optional[str] = None
 
 class OrderItemBase(BaseModel):
     book_id: UUID
@@ -30,9 +34,8 @@ class OrderItem(OrderItemBase):
 class OrderItemWithBook(OrderItem):
     model_config = ConfigDict(from_attributes=True)
     
-    # Usar BookSchema para aceitar objetos ORM diretamente
-    # O Pydantic vai automaticamente ler os atributos do objeto Book SQLAlchemy
-    book: Optional[BookSchema] = None
+    # Usar BookSimple para evitar referências circulares
+    book: Optional[BookSimple] = None
 
 class OrderBase(BaseModel):
     shipping_address: Dict[str, Any]

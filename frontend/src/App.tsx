@@ -7,6 +7,7 @@ import { BookDetails } from '@/pages/BookDetails'
 import { Search } from '@/pages/Search'
 import { Cart } from '@/pages/Cart'
 import { Checkout } from '@/pages/Checkout'
+import { OrderConfirmation } from '@/pages/OrderConfirmation'
 import { Profile } from '@/pages/Profile'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
@@ -25,6 +26,7 @@ function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/checkout/success/:orderId" element={<OrderConfirmation />} />
           <Route path="/orders" element={<MyOrders />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />

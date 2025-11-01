@@ -1,12 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCartStore } from '@/stores/cartStore'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
+import { recommendationService } from '@/services/recommendationService'
+import { BookCard } from '@/components/books/BookCard'
+import { BookRecommendation } from '@/types/recommendation'
 
 export function Cart() {
   const { cart, getCart, updateCartItem, removeFromCart, clearCart, isLoading, error } = useCartStore()
+  const [recommendations, setRecommendations] = useState<BookRecommendation[]>([])
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
 
   useEffect(() => {
     getCart()
@@ -17,6 +22,40 @@ export function Cart() {
       console.error('Cart error:', error)
     }
   }, [error])
+
+  // Carregar recomendações baseadas nas categorias do carrinho
+  useEffect(() => {
+    const loadRecommendations = async () => {
+      if (cart && cart.items.length > 0) {
+        try {
+          setLoadingRecommendations(true)
+          
+          // Obter recomendações similares baseadas no primeiro livro do carrinho
+          // Isso garante que as recomendações sejam de categorias similares
+          const firstBookId = cart.items[0].book_id
+          if (firstBookId) {
+            const similarBooks = await recommendationService.getSimilarBooks(firstBookId, 8)
+            setRecommendations(similarBooks)
+          }
+        } catch (err) {
+          console.error('Erro ao carregar recomendações:', err)
+          // Se falhar, tenta obter recomendações personalizadas (se usuário autenticado)
+          try {
+            const result = await recommendationService.getPersonalizedRecommendations(8, 'hybrid')
+            if (result.recommendations) {
+              setRecommendations(result.recommendations)
+            }
+          } catch (fallbackErr) {
+            console.error('Erro ao carregar recomendações personalizadas:', fallbackErr)
+          }
+        } finally {
+          setLoadingRecommendations(false)
+        }
+      }
+    }
+
+    loadRecommendations()
+  }, [cart?.items])
 
   const handleQuantityChange = async (bookId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -189,6 +228,34 @@ export function Cart() {
           </Card>
         </div>
       </div>
+
+      {/* Recommended Books Section */}
+      {cart && cart.items.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-6">Você Também Pode Gostar</h2>
+          {loadingRecommendations ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 h-64 rounded-lg mb-4"></div>
+                  <div className="bg-gray-200 h-4 rounded mb-2"></div>
+                  <div className="bg-gray-200 h-4 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          ) : recommendations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommendations.map((rec) => 
+                rec.book ? (
+                  <BookCard key={rec.book_id} book={rec.book} />
+                ) : null
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-600">Nenhuma recomendação disponível no momento</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

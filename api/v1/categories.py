@@ -78,5 +78,12 @@ async def get_books_by_category(
     db: Session = Depends(get_db)
 ):
     """Get books by category."""
+    import sys
+    print(f"[API] get_books_by_category: category_id={category_id}, skip={skip}, limit={limit}", file=sys.stderr)
+    
     book_service = BookService(db)
-    return await book_service.get_books_by_category(category_id, skip, limit)
+    books = await book_service.get_books_by_category(category_id, skip, limit)
+    
+    print(f"[API] Returning {len(books)} books", file=sys.stderr)
+    
+    return books
