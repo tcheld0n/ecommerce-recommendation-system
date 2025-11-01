@@ -130,7 +130,7 @@ export function Checkout() {
         description: `Seu pedido #${order.id} foi criado.`,
       })
 
-      navigate(`/orders/${order.id}`)
+      navigate(`/checkout/success/${order.id}`)
     } catch (error: any) {
       console.error('Erro ao criar pedido:', error)
       

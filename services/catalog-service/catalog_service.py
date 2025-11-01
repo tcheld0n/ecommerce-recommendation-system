@@ -106,22 +106,70 @@ async def get_recent_books(
 async def get_books(
     skip: int = 0,
     limit: int = 100,
-    category_id: Optional[int] = None,
+    category_id: Optional[str] = None,
     search: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    min_rating: Optional[float] = None,
+    sort_by: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """Listar livros com filtros opcionais"""
+    from uuid import UUID
     from sqlalchemy.orm import joinedload
+    from sqlalchemy import and_, or_, desc, asc
+    from decimal import Decimal
     
     logger.info(f"Listando livros | skip={skip} | limit={limit} | category_id={category_id} | search={search}")
     
     query = db.query(Book).options(joinedload(Book.category))
     
+    # Filtro por categoria
     if category_id:
-        query = query.filter(Book.category_id == category_id)
+        try:
+            # Tentar converter para UUID
+            category_uuid = UUID(category_id)
+            query = query.filter(Book.category_id == category_uuid)
+        except ValueError:
+            # Se não for UUID válido, tentar como slug
+            category = db.query(Category).filter(Category.slug == category_id).first()
+            if category:
+                query = query.filter(Book.category_id == category.id)
     
+    # Filtro de busca por texto
     if search:
-        query = query.filter(Book.title.ilike(f"%{search}%"))
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Book.title.ilike(search_term),
+                Book.author.ilike(search_term),
+                Book.isbn.ilike(search_term),
+                Book.publisher.ilike(search_term)
+            )
+        )
+    
+    # Filtro de preço
+    if min_price is not None:
+        query = query.filter(Book.price >= Decimal(str(min_price)))
+    
+    if max_price is not None:
+        query = query.filter(Book.price <= Decimal(str(max_price)))
+    
+    # Filtro de avaliação
+    if min_rating is not None:
+        query = query.filter(Book.average_rating >= min_rating)
+    
+    # Ordenação
+    if sort_by == "price_asc":
+        query = query.order_by(asc(Book.price))
+    elif sort_by == "price_desc":
+        query = query.order_by(desc(Book.price))
+    elif sort_by == "rating":
+        query = query.order_by(desc(Book.average_rating))
+    elif sort_by == "newest":
+        query = query.order_by(desc(Book.created_at))
+    else:  # relevance ou padrão
+        query = query.order_by(desc(Book.average_rating), desc(Book.total_reviews))
     
     books = query.offset(skip).limit(limit).all()
     logger.info(f"Retornados {len(books)} livros")
@@ -262,6 +310,52 @@ async def get_categories(db: Session = Depends(get_db)):
     """Listar todas as categorias"""
     categories = db.query(Category).all()
     return categories
+
+@app.get("/categories/{category_id}/books", response_model=List[BookSchema])
+async def get_books_by_category(
+    category_id: str,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """Obter livros de uma categoria específica"""
+    from uuid import UUID
+    from sqlalchemy.orm import joinedload
+    
+    logger.info(f"Obtendo livros por categoria | category_id={category_id} | skip={skip} | limit={limit}")
+    
+    # Tentar converter para UUID
+    try:
+        if isinstance(category_id, str):
+            category_uuid = UUID(category_id)
+        else:
+            category_uuid = category_id
+        
+        books = db.query(Book).options(joinedload(Book.category))\
+            .filter(Book.category_id == category_uuid)\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+        
+        logger.info(f"Retornados {len(books)} livros da categoria")
+        return books
+    except ValueError:
+        # Se não conseguir converter, tenta como slug
+        logger.info(f"Categoria ID não é UUID válido, tentando buscar por slug")
+        category = db.query(Category).filter(Category.slug == category_id).first()
+        
+        if not category:
+            logger.warning(f"Categoria não encontrada | category_id={category_id}")
+            raise HTTPException(status_code=404, detail="Categoria não encontrada")
+        
+        books = db.query(Book).options(joinedload(Book.category))\
+            .filter(Book.category_id == category.id)\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+        
+        logger.info(f"Retornados {len(books)} livros da categoria {category.name}")
+        return books
 
 @app.post("/categories", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
 async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):

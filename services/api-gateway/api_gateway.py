@@ -138,13 +138,30 @@ async def health_check():
 
 # ========== CATALOG SERVICE ROUTES ==========
 @app.get("/api/v1/books")
-async def get_books(skip: int = 0, limit: int = 100, category_id: int = None, search: str = None):
-    """Listar livros"""
+async def get_books(
+    skip: int = 0,
+    limit: int = 100,
+    category_id: str = None,
+    search: str = None,
+    min_price: float = None,
+    max_price: float = None,
+    min_rating: float = None,
+    sort_by: str = None
+):
+    """Listar livros com filtros opcionais"""
     params = {"skip": skip, "limit": limit}
     if category_id:
         params["category_id"] = category_id
     if search:
         params["search"] = search
+    if min_price is not None:
+        params["min_price"] = min_price
+    if max_price is not None:
+        params["max_price"] = max_price
+    if min_rating is not None:
+        params["min_rating"] = min_rating
+    if sort_by:
+        params["sort_by"] = sort_by
     return await call_service("catalog", "GET", "/books", params=params)
 
 @app.get("/api/v1/books/popular")
@@ -181,6 +198,11 @@ async def delete_book(book_id: str):
 async def get_categories():
     """Listar categorias"""
     return await call_service("catalog", "GET", "/categories")
+
+@app.get("/api/v1/categories/{category_id}/books")
+async def get_books_by_category(category_id: str, skip: int = 0, limit: int = 20):
+    """Obter livros por categoria"""
+    return await call_service("catalog", "GET", f"/categories/{category_id}/books", params={"skip": skip, "limit": limit})
 
 # ========== AUTH SERVICE ROUTES ==========
 @app.post("/api/v1/auth/register")
@@ -380,7 +402,7 @@ async def get_orders(request: Request, skip: int = 0, limit: int = 100, status_f
     return await call_service("orders", "GET", "/orders", params=params, headers=headers)
 
 @app.get("/api/v1/orders/{order_id}")
-async def get_order(order_id: int, request: Request):
+async def get_order(order_id: str, request: Request):
     """Obter pedido específico"""
     authorization = request.headers.get("Authorization")
     if not authorization:
@@ -389,7 +411,7 @@ async def get_order(order_id: int, request: Request):
     return await call_service("orders", "GET", f"/orders/{order_id}", headers=headers)
 
 @app.post("/api/v1/orders/{order_id}/cancel")
-async def cancel_order(order_id: int, request: Request):
+async def cancel_order(order_id: str, request: Request):
     """Cancelar pedido"""
     authorization = request.headers.get("Authorization")
     if not authorization:

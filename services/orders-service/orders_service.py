@@ -334,13 +334,19 @@ async def get_user_orders(
     db: Session = Depends(get_db)
 ):
     """Obter pedidos do usuário atual"""
+    from sqlalchemy.orm import selectinload
+    
     logger.info(f"Obtendo pedidos | user_id={user_id}")
     
-    query = db.query(Order).filter(Order.user_id == user_id)
+    query = db.query(Order).options(
+        selectinload(Order.items).selectinload(OrderItem.book)
+    ).filter(Order.user_id == user_id)
+    
     if status_filter:
         query = query.filter(Order.status == status_filter)
     
     orders = query.offset(skip).limit(limit).all()
+    logger.debug(f"Retornados {len(orders)} pedidos para user_id={user_id}")
     return orders
 
 @app.get("/orders/{order_id}", response_model=OrderSchema)
@@ -351,6 +357,7 @@ async def get_order(
 ):
     """Obter pedido específico"""
     from uuid import UUID as UUIDType
+    from sqlalchemy.orm import selectinload
     
     logger.info(f"Obtendo pedido | order_id={order_id} | user_id={user_id}")
     
@@ -359,12 +366,18 @@ async def get_order(
     except ValueError:
         raise HTTPException(status_code=400, detail="ID de pedido inválido")
     
-    order = db.query(Order).filter(Order.id == order_uuid).first()
+    # Usar eager loading para evitar lazy load issues
+    order = db.query(Order).options(
+        selectinload(Order.items).selectinload(OrderItem.book)
+    ).filter(Order.id == order_uuid).first()
+    
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     
     if order.user_id != user_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
+    
+    logger.debug(f"Retornando pedido com itens | order_id={order.id} | items_count={len(order.items)}")
     
     return order
 
@@ -377,6 +390,7 @@ async def update_order(
 ):
     """Atualizar pedido"""
     from uuid import UUID as UUIDType
+    from sqlalchemy.orm import selectinload
     
     logger.info(f"Atualizando pedido | order_id={order_id} | user_id={user_id}")
     
@@ -385,7 +399,10 @@ async def update_order(
     except ValueError:
         raise HTTPException(status_code=400, detail="ID de pedido inválido")
     
-    order = db.query(Order).filter(Order.id == order_uuid).first()
+    order = db.query(Order).options(
+        selectinload(Order.items).selectinload(OrderItem.book)
+    ).filter(Order.id == order_uuid).first()
+    
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     
@@ -443,13 +460,17 @@ async def get_order_items(
 ):
     """Obter itens do pedido"""
     from uuid import UUID as UUIDType
+    from sqlalchemy.orm import selectinload
     
     try:
         order_uuid = UUIDType(order_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="ID de pedido inválido")
     
-    order = db.query(Order).filter(Order.id == order_uuid).first()
+    # Usar eager loading para carregar livros
+    order = db.query(Order).options(
+        selectinload(Order.items).selectinload(OrderItem.book)
+    ).filter(Order.id == order_uuid).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     

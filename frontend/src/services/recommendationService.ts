@@ -31,9 +31,7 @@ export const recommendationService = {
       params: { limit }
     })
     return response.data
-  }
-
-  ,
+  },
 
   async recordInteraction(bookId: string, interactionType: string): Promise<void> {
     try {

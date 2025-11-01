@@ -1,6 +1,6 @@
 import { api } from './api'
 import { Order, OrderCreate, OrderSummary } from '@/types/order'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 
 export const orderService = {
   async createOrder(orderData: OrderCreate): Promise<Order> {
@@ -35,7 +35,7 @@ export const useOrderService = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createOrder = async (orderData: OrderCreate): Promise<Order> => {
+  const createOrder = useCallback(async (orderData: OrderCreate): Promise<Order> => {
     setIsLoading(true)
     setError(null)
     try {
@@ -47,9 +47,9 @@ export const useOrderService = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const getOrder = async (id: string): Promise<Order> => {
+  const getOrder = useCallback(async (id: string): Promise<Order> => {
     setIsLoading(true)
     setError(null)
     try {
@@ -61,9 +61,9 @@ export const useOrderService = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const getUserOrders = async (): Promise<OrderSummary[]> => {
+  const getUserOrders = useCallback(async (): Promise<OrderSummary[]> => {
     setIsLoading(true)
     setError(null)
     try {
@@ -75,9 +75,9 @@ export const useOrderService = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const processPayment = async (orderId: string): Promise<any> => {
+  const processPayment = useCallback(async (orderId: string): Promise<any> => {
     setIsLoading(true)
     setError(null)
     try {
@@ -89,7 +89,7 @@ export const useOrderService = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   return {
     createOrder,

@@ -10,17 +10,32 @@ class BookRepository(BaseRepository[Book]):
         super().__init__(Book, db)
 
     def get_with_details(self, book_id: str) -> Optional[Book]:
-        return (
-            self.db.query(Book)
-            .options(joinedload(Book.category), joinedload(Book.tags))
-            .filter(Book.id == book_id)
-            .first()
-        )
+        from uuid import UUID as UUIDType
+        # Tenta converter book_id para UUID se for string
+        try:
+            if isinstance(book_id, str):
+                book_uuid = UUIDType(book_id)
+            else:
+                book_uuid = book_id
+            return (
+                self.db.query(Book)
+                .options(joinedload(Book.category), joinedload(Book.tags))
+                .filter(Book.id == book_uuid)
+                .first()
+            )
+        except (ValueError, TypeError):
+            # Se não conseguir converter, tenta como string
+            return (
+                self.db.query(Book)
+                .options(joinedload(Book.category), joinedload(Book.tags))
+                .filter(Book.id == book_id)
+                .first()
+            )
 
     def search_books(self, search_params: Dict[str, Any]) -> List[Book]:
         query = self.db.query(Book).options(joinedload(Book.category), joinedload(Book.tags))
         
-        # Text search
+        # Text search - busca em título, autor, ISBN e editora
         if search_params.get("query"):
             search_term = f"%{search_params['query']}%"
             query = query.filter(
@@ -34,7 +49,18 @@ class BookRepository(BaseRepository[Book]):
         
         # Category filter
         if search_params.get("category_id"):
-            query = query.filter(Book.category_id == search_params["category_id"])
+            category_id = search_params["category_id"]
+            from uuid import UUID as UUIDType
+            # Tenta converter para UUID se for string
+            try:
+                if isinstance(category_id, str):
+                    category_uuid = UUIDType(category_id)
+                else:
+                    category_uuid = category_id
+                query = query.filter(Book.category_id == category_uuid)
+            except (ValueError, TypeError):
+                # Se não conseguir converter, tenta como string
+                query = query.filter(Book.category_id == category_id)
         
         # Price range
         if search_params.get("min_price"):
@@ -81,14 +107,61 @@ class BookRepository(BaseRepository[Book]):
         return query.offset(skip).limit(limit).all()
 
     def get_books_by_category(self, category_id: str, skip: int = 0, limit: int = 20) -> List[Book]:
-        return (
-            self.db.query(Book)
-            .options(joinedload(Book.category), joinedload(Book.tags))
-            .filter(Book.category_id == category_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        """Get books by category, converting category_id to UUID if needed"""
+        from uuid import UUID as UUIDType
+        import sys
+        
+        # Debug log
+        print(f"[DEBUG] get_books_by_category called with:", file=sys.stderr)
+        print(f"  category_id: {category_id} (type: {type(category_id).__name__})", file=sys.stderr)
+        print(f"  skip: {skip}", file=sys.stderr)
+        print(f"  limit: {limit}", file=sys.stderr)
+        
+        # Tenta converter para UUID se for string
+        try:
+            if isinstance(category_id, str):
+                category_uuid = UUIDType(category_id)
+            else:
+                category_uuid = category_id
+            
+            print(f"[DEBUG] Converted to UUID: {category_uuid}", file=sys.stderr)
+            
+            query = (
+                self.db.query(Book)
+                .options(joinedload(Book.category), joinedload(Book.tags))
+                .filter(Book.category_id == category_uuid)
+            )
+            
+            print(f"[DEBUG] Query: {query}", file=sys.stderr)
+            
+            results = query.offset(skip).limit(limit).all()
+            print(f"[DEBUG] Found {len(results)} books", file=sys.stderr)
+            
+            return results
+        except (ValueError, TypeError) as e:
+            # Se não conseguir converter, tenta como string
+            print(f"[DEBUG] Failed to convert to UUID: {e}", file=sys.stderr)
+            print(f"[DEBUG] Trying direct string match on slug/id", file=sys.stderr)
+            
+            # Tentar como slug também
+            from models.book import Category as CategoryModel
+            category = self.db.query(CategoryModel).filter(
+                (CategoryModel.id == category_id) | (CategoryModel.slug == category_id)
+            ).first()
+            
+            if category:
+                print(f"[DEBUG] Found category by slug: {category.name}", file=sys.stderr)
+                return (
+                    self.db.query(Book)
+                    .options(joinedload(Book.category), joinedload(Book.tags))
+                    .filter(Book.category_id == category.id)
+                    .offset(skip)
+                    .limit(limit)
+                    .all()
+                )
+            else:
+                print(f"[DEBUG] Category not found", file=sys.stderr)
+                return []
 
     def get_popular_books(self, limit: int = 10) -> List[Book]:
         return (
