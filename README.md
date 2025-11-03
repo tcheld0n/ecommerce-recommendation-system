@@ -4,69 +4,6 @@ Sistema de e-commerce especializado em livros com motor de recomendação basead
 
 ---
 
-## 🚀 Quick Start (5 minutos)
-
-### Prerequisites
-- **Docker** e **Docker Compose**
-- **Node.js 18+** (para frontend local)
-
-### 1️⃣ Clone e inicie os serviços
-```bash
-git clone <repository-url>
-cd ecommerce-recommendation-system
-docker compose up -d
-```
-
-### 2️⃣ Popule o banco de dados
-```bash
-docker compose exec catalog-service python import_csv_only.py
-```
-
-### 3️⃣ Inicie o frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 4️⃣ Acesse
-- **App**: http://localhost:3000
-- **API Docs**: http://localhost:8000/docs
-
----
-
-## 📦 Stack Utilizado
-
-### Backend
-| Tecnologia | Função |
-|-----------|--------|
-| **FastAPI** | Framework web principal |
-| **Python 3.11+** | Linguagem |
-| **SQLAlchemy** | ORM para banco de dados |
-| **Pydantic** | Validação de dados |
-| **Redis** | Cache e sessões |
-| **Elasticsearch** | Busca avançada |
-| **Celery** | Tasks assíncronas |
-| **scikit-learn** | Machine Learning |
-
-### Frontend
-| Tecnologia | Função |
-|-----------|--------|
-| **React 18** | Framework UI |
-| **TypeScript** | Tipagem estática |
-| **Vite** | Build tool |
-| **Tailwind CSS** | Estilização |
-| **Zustand** | State management |
-
-### Infraestrutura
-| Serviço | Versão | Porta |
-|--------|--------|------|
-| **PostgreSQL** | 15 | 5432 |
-| **Redis** | 7 | 6379 |
-| **Elasticsearch** | 8 | 9200 |
-
----
-
 ## 🏗️ Arquitetura de Microsserviços
 
 ```
@@ -158,6 +95,68 @@ npm run dev
 ├── docker-compose.yml            # Orquestração
 └── requirements.txt              # Dependências Python
 ```
+---
+
+## 🚀 Quick Start (5 minutos)
+
+### Prerequisites
+- **Docker** e **Docker Compose**
+- **Node.js 18+** (para frontend local)
+
+### 1️⃣ Clone e inicie os serviços
+```bash
+git clone <repository-url>
+cd ecommerce-recommendation-system
+docker compose up -d
+```
+
+### 2️⃣ Popule o banco de dados
+```bash
+docker compose exec catalog-service python import_csv_only.py
+```
+
+### 3️⃣ Inicie o frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 4️⃣ Acesse
+- **App**: http://localhost:3000
+- **API Docs**: http://localhost:8000/docs
+
+---
+
+## 📦 Stack Utilizado
+
+### Backend
+| Tecnologia | Função |
+|-----------|--------|
+| **FastAPI** | Framework web principal |
+| **Python 3.11+** | Linguagem |
+| **SQLAlchemy** | ORM para banco de dados |
+| **Pydantic** | Validação de dados |
+| **Redis** | Cache e sessões |
+| **Elasticsearch** | Busca avançada |
+| **Celery** | Tasks assíncronas |
+| **scikit-learn** | Machine Learning |
+
+### Frontend
+| Tecnologia | Função |
+|-----------|--------|
+| **React 18** | Framework UI |
+| **TypeScript** | Tipagem estática |
+| **Vite** | Build tool |
+| **Tailwind CSS** | Estilização |
+| **Zustand** | State management |
+
+### Infraestrutura
+| Serviço | Versão | Porta |
+|--------|--------|------|
+| **PostgreSQL** | 15 | 5432 |
+| **Redis** | 7 | 6379 |
+| **Elasticsearch** | 8 | 9200 |
 
 ---
 
