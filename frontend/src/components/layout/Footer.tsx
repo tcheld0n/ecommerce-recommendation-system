@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useFeaturesStore } from '@/stores/features'
 
 export function Footer() {
+  const { flags, load, loaded } = useFeaturesStore()
+  useEffect(() => { if (!loaded) { load() } }, [loaded, load])
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8">
@@ -24,24 +28,25 @@ export function Footer() {
             <h3 className="text-lg font-semibold mb-4">Links Rápidos</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/" className="text-gray-300 hover:text-white transition">
-                  Início
-                </Link>
+                <Link to="/" className="text-gray-300 hover:text-white transition">Início</Link>
               </li>
               <li>
-                <Link to="/search" className="text-gray-300 hover:text-white transition">
-                  Buscar Livros
-                </Link>
+                {flags.catalog && (
+                  <Link to="/search" className="text-gray-300 hover:text-white transition">Buscar Livros</Link>
+                )}
               </li>
               <li>
-                <Link to="/orders" className="text-gray-300 hover:text-white transition">
-                  Meus pedidos
-                </Link>
+                {flags.orders && (
+                  <Link to="/orders" className="text-gray-300 hover:text-white transition">Meus pedidos</Link>
+                )}
               </li>
               <li>
-                <Link to="/categories" className="text-gray-300 hover:text-white transition">
-                  Categorias
-                </Link>
+                <Link to="/config" className="text-gray-300 hover:text-white transition">Configuração</Link>
+              </li>
+              <li>
+                {flags.catalog && (
+                  <Link to="/categories" className="text-gray-300 hover:text-white transition">Categorias</Link>
+                )}
               </li>
             </ul>
           </div>
@@ -51,19 +56,15 @@ export function Footer() {
             <h3 className="text-lg font-semibold mb-4">Suporte</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/help" className="text-gray-300 hover:text-white transition">
-                  Ajuda
-                </Link>
+                <Link to="/help" className="text-gray-300 hover:text-white transition">Ajuda</Link>
               </li>
               <li>
-                <Link to="/contact" className="text-gray-300 hover:text-white transition">
-                  Contato
-                </Link>
+                <Link to="/contact" className="text-gray-300 hover:text-white transition">Contato</Link>
               </li>
               <li>
-                <Link to="/shipping" className="text-gray-300 hover:text-white transition">
-                  Envio
-                </Link>
+                {flags.shipping && (
+                  <Link to="/shipping" className="text-gray-300 hover:text-white transition">Envio</Link>
+                )}
               </li>
             </ul>
           </div>

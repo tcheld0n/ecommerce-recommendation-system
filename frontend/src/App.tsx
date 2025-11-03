@@ -15,6 +15,7 @@ import MyOrders from '@/pages/MyOrders'
 import Shipping from '@/pages/Shipping.tsx'
 import { AdminDashboard } from '@/pages/Admin/Dashboard'
 import { BookManagement } from '@/pages/Admin/BookManagement'
+import Config from '@/pages/Config'
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/books" element={<BookManagement />} />
+          <Route path="/config" element={<Config />} />
         </Routes>
       </main>
       <Footer />
