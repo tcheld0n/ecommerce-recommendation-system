@@ -19,6 +19,12 @@ except ImportError:
     from core.logging import setup_logging, log_request, log_response, log_service_call, log_error
 
 logger = setup_logging("api-gateway")
+try:
+    from .feature_flags import FeatureFlags
+except Exception:
+    from feature_flags import FeatureFlags
+
+flags = FeatureFlags()
 
 app = FastAPI(
     title="E-commerce API Gateway",
@@ -55,7 +61,12 @@ SERVICE_URLS = {
     "orders": settings.ORDERS_SERVICE_URL,
     "payment": settings.PAYMENT_SERVICE_URL,
     "recommendation": settings.RECOMMENDATION_SERVICE_URL,
+    "shipping": settings.SHIPPING_SERVICE_URL,
 }
+
+def require_feature(feature_key: str):
+    if not flags.is_enabled(feature_key):
+        raise HTTPException(status_code=404, detail=f"Feature '{feature_key}' desabilitada")
 
 # Middleware de logging
 @app.middleware("http")
@@ -134,7 +145,19 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "features": flags.get_all()}
+
+# ========== FEATURE FLAGS ROUTES ==========
+@app.get("/api/v1/features")
+async def get_feature_flags():
+    """Obter configuração de features (product line)."""
+    return flags.get_all()
+
+@app.put("/api/v1/features")
+async def update_feature_flags(new_flags: dict):
+    """Atualizar configuração de features e persistir em arquivo."""
+    saved = flags.save(new_flags or {})
+    return saved
 
 # ========== CATALOG SERVICE ROUTES ==========
 @app.get("/api/v1/books")
@@ -434,9 +457,55 @@ async def get_payment_methods():
 @app.get("/api/v1/recommendations")
 async def get_recommendations(request: Request, limit: int = 10):
     """Obter recomendações"""
+    require_feature("recommendation")
     authorization = request.headers.get("Authorization")
     headers = {"Authorization": authorization} if authorization else {}
     return await call_service("recommendation", "GET", "/recommendations", params={"limit": limit}, headers=headers)
+
+@app.get("/api/v1/recommendations/for-you")
+async def get_recommendations_for_you(request: Request, limit: int = 10):
+    """Obter recomendações personalizadas (compatível com frontend monolítico)
+    Proxy para o Recommendation Service em /recommendations (usa Authorization, se presente)
+    """
+    require_feature("recommendation")
+    authorization = request.headers.get("Authorization")
+    headers = {"Authorization": authorization} if authorization else {}
+    return await call_service("recommendation", "GET", "/recommendations", params={"limit": limit}, headers=headers)
+
+@app.post("/api/v1/recommendations/interactions")
+async def post_recommendation_interaction(interaction_data: dict):
+    """Registrar interação de recomendação (VIEW, ADD_TO_CART, PURCHASE)
+    Encaminha para Recommendation Service em /interactions
+    """
+    require_feature("recommendation")
+    return await call_service("recommendation", "POST", "/interactions", json=interaction_data)
+
+@app.get("/api/v1/recommendations/books/{book_id}/similar")
+async def get_similar_books(book_id: str, limit: int = 10):
+    """Obter livros similares ao informado (proxy para Recommendation Service)
+    Compatível com frontend que chama /api/v1/recommendations/books/{book_id}/similar
+    """
+    require_feature("similarInCart")
+    return await call_service("recommendation", "GET", f"/books/{book_id}/similar", params={"limit": limit})
+
+# ========== SHIPPING SERVICE ROUTES ==========
+@app.post("/api/v1/shipping/quote")
+async def shipping_quote(quote_request: dict):
+    """Calcular cotação de frete"""
+    require_feature("shipping")
+    return await call_service("shipping", "POST", "/quote", json=quote_request)
+
+@app.post("/api/v1/shipping/shipments")
+async def create_shipment(payload: dict):
+    """Criar envio e obter código de rastreio"""
+    require_feature("shipping")
+    return await call_service("shipping", "POST", "/shipments", json=payload)
+
+@app.get("/api/v1/shipping/track/{tracking_code}")
+async def track_shipment(tracking_code: str):
+    """Rastrear envio"""
+    require_feature("shipping")
+    return await call_service("shipping", "GET", f"/track/{tracking_code}")
 
 if __name__ == "__main__":
     import uvicorn

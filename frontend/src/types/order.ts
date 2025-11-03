@@ -25,6 +25,7 @@ export interface OrderItem {
 
 export interface OrderCreate {
   shipping_address: Record<string, any>
+  shipping_method?: Record<string, any>
   payment_method: string
   items: OrderItemCreate[]
 }

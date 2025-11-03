@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useCartStore } from '@/stores/cartStore'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
 import { recommendationService } from '@/services/recommendationService'
+import { useFeaturesStore } from '@/stores/features'
 import { BookCard } from '@/components/books/BookCard'
 import { BookRecommendation } from '@/types/recommendation'
 
@@ -12,6 +13,8 @@ export function Cart() {
   const { cart, getCart, updateCartItem, removeFromCart, clearCart, isLoading, error } = useCartStore()
   const [recommendations, setRecommendations] = useState<BookRecommendation[]>([])
   const [loadingRecommendations, setLoadingRecommendations] = useState(false)
+  const { flags, load: loadFlags, loaded: flagsLoaded } = useFeaturesStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     getCart()
@@ -23,30 +26,33 @@ export function Cart() {
     }
   }, [error])
 
-  // Carregar recomendações baseadas nas categorias do carrinho
+  // Garantir que flags estejam carregadas
+  useEffect(() => { if (!flagsLoaded) { loadFlags() } }, [flagsLoaded, loadFlags])
+
+  // Carregar recomendações baseadas nas categorias do carrinho (respeitando feature flags)
   useEffect(() => {
     const loadRecommendations = async () => {
+      if (!flagsLoaded) return
       if (cart && cart.items.length > 0) {
         try {
           setLoadingRecommendations(true)
           
-          // Obter recomendações similares baseadas no primeiro livro do carrinho
-          // Isso garante que as recomendações sejam de categorias similares
           const firstBookId = cart.items[0].book_id
-          if (firstBookId) {
+          if (firstBookId && flags.similarInCart) {
             const similarBooks = await recommendationService.getSimilarBooks(firstBookId, 8)
             setRecommendations(similarBooks)
           }
         } catch (err) {
           console.error('Erro ao carregar recomendações:', err)
-          // Se falhar, tenta obter recomendações personalizadas (se usuário autenticado)
-          try {
-            const result = await recommendationService.getPersonalizedRecommendations(8, 'hybrid')
-            if (result.recommendations) {
-              setRecommendations(result.recommendations)
+          if (flags.recommendation) {
+            try {
+              const result = await recommendationService.getPersonalizedRecommendations(8, 'hybrid')
+              if (result.recommendations) {
+                setRecommendations(result.recommendations)
+              }
+            } catch (fallbackErr) {
+              console.error('Erro ao carregar recomendações personalizadas:', fallbackErr)
             }
-          } catch (fallbackErr) {
-            console.error('Erro ao carregar recomendações personalizadas:', fallbackErr)
           }
         } finally {
           setLoadingRecommendations(false)
@@ -55,7 +61,7 @@ export function Cart() {
     }
 
     loadRecommendations()
-  }, [cart?.items])
+  }, [cart?.items, flagsLoaded, flags.similarInCart, flags.recommendation])
 
   const handleQuantityChange = async (bookId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -88,7 +94,6 @@ export function Cart() {
   }
 
   if (error && !cart) {
-    // Só mostrar erro completo se não tiver dados do carrinho
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="text-center">
@@ -217,13 +222,33 @@ export function Cart() {
                 </div>
               </div>
               
-              <Button asChild className="w-full mt-6">
-                <Link to="/checkout">Finalizar Compra</Link>
-              </Button>
-              
-              <Button variant="outline" asChild className="w-full">
-                <Link to="/">Continuar Comprando</Link>
-              </Button>
+                    <div className="space-y-2">
+                      <Button asChild className="w-full mt-6">
+                        <Link to="/checkout">Finalizar Compra</Link>
+                      </Button>
+
+                      {/* Direct link to shipping calculator using cart items */}
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          const itemsForQuote = cart.items.map((it) => ({
+                            weight_kg: it.book?.weight_kg || 0.5,
+                            length_cm: it.book?.length_cm || 20,
+                            width_cm: it.book?.width_cm || 15,
+                            height_cm: it.book?.height_cm || 5,
+                            quantity: it.quantity,
+                          }))
+                          navigate('/shipping', { state: { items: itemsForQuote, declared_value: cart.total_amount } })
+                        }}
+                      >
+                        Calcular frete
+                      </Button>
+
+                      <Button variant="outline" asChild className="w-full">
+                        <Link to="/">Continuar Comprando</Link>
+                      </Button>
+                    </div>
             </CardContent>
           </Card>
         </div>

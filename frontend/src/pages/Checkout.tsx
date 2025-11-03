@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -27,6 +27,8 @@ type CheckoutForm = z.infer<typeof checkoutSchema>
 export function Checkout() {
   const navigate = useNavigate()
   const { cart, getCart } = useCartStore()
+  const location = useLocation()
+  const selectedShippingFromState = (location.state || {}) as { selectedShipping?: any }
   const { createOrder } = useOrderService()
   const { toast } = useToast()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -110,6 +112,8 @@ export function Checkout() {
           state: data.state,
           zip_code: data.zip_code,
         },
+          // Include selected shipping option if available (from Shipping page)
+          shipping_method: selectedShippingFromState.selectedShipping || undefined,
         payment_method: data.payment_method,
         items: cart.items.map(item => ({
           book_id: item.book_id,
@@ -280,6 +284,23 @@ export function Checkout() {
                   <p className="text-red-500 text-sm mt-1">{errors.zip_code.message}</p>
                 )}
               </div>
+
+              {/* Selected shipping option summary (if returned from Shipping page) */}
+              {selectedShippingFromState.selectedShipping && (
+                <div className="mt-4 p-3 border rounded bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">Opção de frete selecionada</div>
+                      <div className="text-sm text-gray-600">{selectedShippingFromState.selectedShipping.carrier} · {selectedShippingFromState.selectedShipping.service}</div>
+                      <div className="text-sm text-gray-600">Entrega em ~{selectedShippingFromState.selectedShipping.estimated_days} dias</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">{selectedShippingFromState.selectedShipping.currency} {selectedShippingFromState.selectedShipping.price.toFixed(2)}</div>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/shipping') } className="mt-2">Alterar</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
