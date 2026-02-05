@@ -63,11 +63,11 @@ export function Cart() {
     loadRecommendations()
   }, [cart?.items, flagsLoaded, flags.similarInCart, flags.recommendation])
 
-  const handleQuantityChange = async (bookId: string, newQuantity: number) => {
+  const handleQuantityChange = async (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      await removeFromCart(bookId)
+      await removeFromCart(itemId)
     } else {
-      await updateCartItem(bookId, newQuantity)
+      await updateCartItem(itemId, newQuantity)
     }
   }
 
@@ -167,7 +167,7 @@ export function Cart() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleQuantityChange(item.book_id, item.quantity - 1)}
+                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
                     >
                       <Minus className="w-4 h-4" />
                     </Button>
@@ -175,7 +175,7 @@ export function Cart() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleQuantityChange(item.book_id, item.quantity + 1)}
+                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -188,7 +188,7 @@ export function Cart() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => removeFromCart(item.book_id)}
+                      onClick={() => removeFromCart(item.id)}
                       className="mt-2 text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />

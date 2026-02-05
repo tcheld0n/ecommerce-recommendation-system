@@ -16,6 +16,11 @@ export interface Book {
   updated_at: string
   category?: Category
   tags?: BookTag[]
+  // Physical dimensions for shipping
+  weight_kg?: number
+  length_cm?: number
+  width_cm?: number
+  height_cm?: number
 }
 
 export interface Category {

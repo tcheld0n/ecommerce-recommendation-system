@@ -76,10 +76,10 @@ export function Header() {
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                   <Link to="/login">Entrar</Link>
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                   <Link to="/register">Cadastrar</Link>
                 </Button>
               </div>
@@ -132,12 +132,12 @@ export function Header() {
                 </>
               ) : (
                 <div className="space-y-2">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                  <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                     <Link to="/login" onClick={() => setIsMenuOpen(false)}>
                       Entrar
                     </Link>
                   </Button>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                  <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                     <Link to="/register" onClick={() => setIsMenuOpen(false)}>
                       Cadastrar
                     </Link>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -23,7 +22,7 @@ type RegisterForm = z.infer<typeof registerSchema>
 
 export function Register() {
   const navigate = useNavigate()
-  const { register: registerUser, isLoading, error, clearError } = useAuthStore()
+  const { register: registerUser, isLoading, error } = useAuthStore()
   
   const {
     register,

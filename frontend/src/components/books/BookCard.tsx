@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Star, ShoppingCart } from 'lucide-react'
 import { Book } from '@/types/book'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { useCartStore } from '@/stores/cartStore'
 import { useToast } from '@/hooks/use-toast'
 
